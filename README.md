@@ -4,7 +4,7 @@ A single-page tool that turns an equipment order into an exact list of physical 
 
 > **Portfolio version.** I designed and built this for the customer-support and warehouse teams at a home and commercial gym-equipment company. This public copy runs on a **fictional sample catalog**. Every product, SKU, dimension and order here is made up, and no company data, branding or customer information is included.
 
-**Try it:** open `site/index.html` in any browser, or deploy the `site/` folder to any static host. Then click **"load a sample order"** in the Order panel, or **Import order → "Paste a sample packing slip"**.
+**Try it:** open `site/index.html` in any browser, or deploy the repo to Vercel or Netlify (both are pre-configured to publish `site/`). Then click **"load a sample order"** in the Order panel, or **Import order → "Paste a sample packing slip"**.
 
 ---
 
@@ -49,5 +49,5 @@ app.html      source (app code, vehicle config, product rules)
 data.js       ITEMS + BUNDLES (sample data)
 catalog.js    CATALOG: category / family / display name (sample data)
 build.sh      builds site/index.html
-site/         deployable page
+site/         deployable page (vercel.json / netlify.toml publish this folder)
 ```
