@@ -1,0 +1,1526 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pickup & Packing Calculator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0b0b0c; --ink-2:#2b2d31; --muted:#6b6f76; --line:#e4e5e8; --line-2:#d3d5d9;
+  --paper:#ffffff; --bg:#f4f4f5; --accent:#1f4bff; --accent-ink:#ffffff; --accent-soft:#e8edff;
+  --ok:#17915a; --warn:#d99400; --bad:#d62828; --flag-bg:#fff4e0; --flag-ink:#8a5a00;
+  --radius:12px; --shadow:0 1px 2px rgba(0,0,0,.05),0 6px 24px rgba(0,0,0,.06);
+  --font:"Archivo","Inter","Helvetica Neue",Helvetica,Arial,system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font-family:var(--font);color:var(--ink);background:var(--bg);font-size:14px;line-height:1.4;-webkit-font-smoothing:antialiased}
+button,input,textarea,select{font:inherit;color:inherit}
+button{cursor:pointer}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+/* Header */
+.top{background:var(--ink);color:#fff;position:sticky;top:0;z-index:20}
+.top-in{max-width:1440px;margin:0 auto;display:flex;align-items:center;gap:16px;padding:12px 20px}
+.top img.logo{height:22px;display:block}
+.top h1{font-size:15px;font-weight:600;letter-spacing:.02em;margin:0;padding-left:16px;border-left:1px solid #3a3b40;color:#d8d9dc}
+.top .sp{flex:1}
+.seg{display:inline-flex;background:#1d1e22;border-radius:999px;padding:3px}
+.seg button{border:0;background:transparent;color:#a9abb1;padding:5px 12px;border-radius:999px;font-weight:600;font-size:12px}
+.seg button[aria-pressed="true"]{background:#fff;color:var(--ink)}
+.seg.light{background:#eceef1}
+.seg.light button{color:var(--muted)}
+.seg.light button[aria-pressed="true"]{background:var(--ink);color:#fff}
+
+/* Layout */
+.wrap{max-width:1440px;margin:0 auto;padding:20px;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:20px;align-items:start}
+.col{display:flex;flex-direction:column;gap:20px;min-width:0}
+.right{position:sticky;top:70px}
+@media (max-width:1024px){.wrap{grid-template-columns:1fr}.right{position:static}}
+@media (max-width:560px){.wrap{padding:12px 16px;gap:14px}.top-in{padding:10px 16px;flex-wrap:wrap}.top h1{display:none}}
+
+.card{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);min-width:0}
+.card-h{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line)}
+.card-h h2{font-size:15px;font-weight:800;margin:0;letter-spacing:-.005em}
+.card-h .sp{flex:1}
+.card-b{padding:16px 18px}
+.muted{color:var(--muted)}
+.btn{border:1px solid var(--line-2);background:#fff;border-radius:8px;padding:8px 14px;font-weight:600;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn:hover{border-color:var(--ink)}
+.btn.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+.btn.primary:hover{background:#222}
+.btn.accent{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.accent:disabled,.btn.primary:disabled{opacity:.35;cursor:not-allowed}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--muted)}
+.btn.ghost:hover{color:var(--ink);border-color:var(--line)}
+.btn.sm{padding:5px 10px;font-size:12px}
+.tabs{display:flex;gap:4px}
+.tabs button{border:0;background:transparent;padding:7px 12px;border-radius:8px;font-weight:700;color:var(--muted)}
+.tabs button[aria-selected="true"]{background:var(--ink);color:#fff}
+
+/* Search */
+.search{position:relative}
+.search input{width:100%;border:1.5px solid var(--line-2);border-radius:10px;padding:12px 14px 12px 40px;font-size:15px;outline:none;background:#fff}
+.search input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.search svg{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--muted)}
+.results{margin-top:12px;border:1px solid var(--line);border-radius:10px;max-height:420px;overflow:auto;background:#fff}
+.results:empty{display:none}
+.fam{border-bottom:1px solid var(--line)}
+.fam:last-child{border-bottom:0}
+.fam-h{display:flex;align-items:center;gap:10px;padding:10px 12px;background:#fafafa;position:sticky;top:0;z-index:1}
+.thumb{width:34px;height:34px;border-radius:7px;background:repeating-linear-gradient(135deg,#ececee 0 6px,#f6f6f7 6px 12px);display:grid;place-items:center;font-weight:800;font-size:11px;color:#8b8e94;flex:none;border:1px solid var(--line)}
+.fam-h .nm{font-weight:700}
+.fam-h .ct{font-size:12px;color:var(--muted)}
+.var{display:flex;align-items:center;gap:10px;padding:8px 12px 8px 56px;border-top:1px solid #f0f0f2;cursor:pointer}
+.var:hover{background:#f7f8ff}
+.var input{width:16px;height:16px;accent-color:var(--accent);flex:none}
+.var .lb{flex:1;min-width:0}
+.var .sku{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;color:var(--muted)}
+.chip{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:2px 7px;border-radius:999px;background:#f0f1f3;color:var(--ink-2);white-space:nowrap}
+.chip.flag{background:var(--flag-bg);color:var(--flag-ink)}
+.chip.heavy{background:var(--ink);color:#fff}
+.chip.acc{background:var(--accent-soft);color:var(--accent)}
+.more{padding:8px 12px 10px 56px}
+.more button{border:0;background:none;color:var(--accent);font-weight:700;padding:0}
+.addbar{display:flex;align-items:center;gap:10px;margin-top:12px}
+.addbar .sp{flex:1}
+.empty{padding:22px;text-align:center;color:var(--muted)}
+
+[hidden]{display:none!important}
+.cats{display:flex;gap:6px;overflow-x:auto;padding:10px 0 2px;scrollbar-width:thin}
+.cats button{border:1px solid var(--line-2);background:#fff;border-radius:999px;padding:5px 11px;font-size:12px;font-weight:600;white-space:nowrap;color:var(--ink-2)}
+.cats button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:#fff}
+.fam-h .cat{margin-left:auto}
+.allsk{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin-top:8px;cursor:pointer}
+.allsk input{accent-color:var(--accent)}
+.arch-h{padding:10px 12px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);background:#f2f2f4;border-bottom:1px solid var(--line)}
+select.alt{margin-top:6px;border:1px solid var(--line-2);border-radius:8px;padding:4px 8px;font-size:12px;background:#fff;max-width:100%}
+.pop{color:var(--accent);font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase}
+.drop{display:flex;align-items:center;gap:14px;border:2px dashed var(--line-2);border-radius:12px;padding:18px;cursor:pointer;color:var(--ink-2);transition:.15s}
+.drop:hover,.drop.over{border-color:var(--accent);background:var(--accent-soft)}
+.importmsg{font-size:12.5px;margin-top:8px}
+.linkbtn{border:0;background:none;padding:0;color:var(--accent);font-weight:700;text-decoration:underline;cursor:pointer}
+.demo{background:var(--accent);color:#fff;font-size:12.5px;text-align:center;padding:7px 16px}
+.demo a{color:#fff;font-weight:700}
+.importmsg .err{color:var(--bad);font-weight:600}
+.src{font-size:12px;color:var(--muted);margin-top:4px}
+
+/* Paste */
+textarea{width:100%;min-height:170px;border:1.5px solid var(--line-2);border-radius:10px;padding:12px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px;resize:vertical;outline:none}
+textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.review{margin-top:14px}
+.review h3{font-size:12px;text-transform:uppercase;letter-spacing:.08em;margin:16px 0 6px;color:var(--muted)}
+.rv{display:grid;grid-template-columns:22px 1fr 72px;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid #f0f0f2}
+.rv input[type=number]{width:72px}
+.rv-note{font-size:12px;color:var(--muted);padding:4px 0}
+
+/* Cart */
+.group{border:1px dashed var(--line-2);border-radius:10px;padding:0 10px;margin-bottom:10px}
+.group-h{font-size:12px;font-weight:700;color:var(--muted);padding:8px 2px 0;text-transform:uppercase;letter-spacing:.06em}
+.line{border-bottom:1px solid var(--line);padding:12px 0}
+.group .line:last-child{border-bottom:0}
+.line-top{display:flex;gap:12px;align-items:flex-start}
+.line-top .info{flex:1;min-width:0}
+.line-top .nm{font-weight:700;font-size:14.5px}
+.line-top .sku{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;color:var(--muted)}
+.qty{display:inline-flex;align-items:center;border:1px solid var(--line-2);border-radius:8px;overflow:hidden;flex:none}
+.qty button{border:0;background:#fff;width:28px;height:30px;font-weight:700}
+.qty button:hover{background:#f2f2f4}
+.qty input{width:44px;border:0;border-left:1px solid var(--line);border-right:1px solid var(--line);text-align:center;height:30px;outline:none;-moz-appearance:textfield}
+.qty input::-webkit-outer-spin-button,.qty input::-webkit-inner-spin-button{-webkit-appearance:none}
+.x{border:0;background:transparent;width:30px;height:30px;border-radius:8px;color:var(--muted);font-size:18px;line-height:1;flex:none}
+.x:hover{background:#f2f2f4;color:var(--ink)}
+details.kids{margin-top:8px}
+details.kids summary{cursor:pointer;font-size:12.5px;font-weight:700;color:var(--accent);list-style:none;display:inline-flex;align-items:center;gap:6px}
+details.kids summary::-webkit-details-marker{display:none}
+details.kids summary::before{content:"";width:0;height:0;border-left:5px solid currentColor;border-top:4px solid transparent;border-bottom:4px solid transparent;transition:transform .15s}
+details.kids[open] summary::before{transform:rotate(90deg)}
+.kid-list{margin-top:6px;border-left:2px solid var(--line);padding-left:12px}
+.kid{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;padding:7px 0;border-bottom:1px solid #f3f3f5;font-size:13px}
+.kid:last-child{border-bottom:0}
+.kid .k-nm{font-weight:600}
+.kid .k-meta{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:4px 14px;color:var(--muted);font-size:12px}
+.kid .k-meta b{color:var(--ink-2);font-weight:600}
+.kid .k-q{font-weight:700;text-align:right}
+.single-meta{display:flex;flex-wrap:wrap;gap:4px 14px;color:var(--muted);font-size:12px;margin-top:6px}
+.single-meta b{color:var(--ink-2);font-weight:600}
+.cps{display:inline-flex;align-items:center;gap:4px;flex-wrap:wrap}
+.cp{display:inline-flex;align-items:baseline;gap:3px;border:1px solid var(--line-2);background:#fff;border-radius:6px;padding:2px 7px;font-size:12px;font-weight:700;color:var(--ink);cursor:copy;font-variant-numeric:tabular-nums}
+.cp:hover{border-color:var(--accent);background:var(--accent-soft)}
+.cp.ok{border-color:var(--ok);background:#e6f6ee}
+.cp-l{font-size:10px;font-weight:700;color:var(--muted)}
+.cp-u{font-size:11px;color:var(--muted)}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+
+/* Totals */
+.stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+@media (max-width:700px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.stat{background:#f7f7f8;border-radius:10px;padding:12px}
+.stat .v{font-size:20px;font-weight:800;letter-spacing:-.01em}
+.stat .l{font-size:11.5px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-top:2px}
+.stat.hv .v{color:var(--ink)}
+.warnbox{margin-top:12px;background:var(--flag-bg);color:var(--flag-ink);border-radius:10px;padding:10px 12px;font-size:13px}
+
+/* Packing list */
+.pl-row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.pl-row .sp{flex:1}
+.field{display:flex;align-items:center;gap:8px}
+.field input{border:1px solid var(--line-2);border-radius:8px;padding:7px 10px;width:150px;outline:none}
+.field input:focus{border-color:var(--accent)}
+pre.preview{margin:14px 0 0;background:#0f1012;color:#e6e7ea;border-radius:10px;padding:12px;font-size:11.5px;max-height:220px;overflow:auto;white-space:pre}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:10px 16px;border-radius:999px;font-weight:600;opacity:0;transition:.25s;pointer-events:none;z-index:50}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* Truck */
+.truck-card .card-b{padding:12px 18px 18px}
+.truck-svg{width:100%;height:auto;display:block}
+.bx{transition:transform .7s cubic-bezier(.2,.85,.25,1.08),opacity .4s}
+.rec{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:12px;background:var(--ink);color:#fff;margin-top:6px}
+.rec .ic{width:56px;height:34px;flex:none;color:#fff}
+.rec .t1{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:#a9abb1;font-weight:700}
+.rec .t2{font-size:22px;font-weight:900;letter-spacing:-.01em;line-height:1.1}
+.rec.none{background:#f2f2f4;color:var(--ink)}
+.rec.none .t1{color:var(--muted)}
+.rec.over{background:var(--bad)}
+.rec.over .t1{color:#ffd9d9}
+.bars{display:grid;gap:10px;margin-top:14px}
+.bar .bl{display:flex;justify-content:space-between;font-size:12px;font-weight:700;margin-bottom:4px}
+.bar .bt{height:10px;border-radius:999px;background:#ececef;overflow:hidden}
+.bar .bf{height:100%;border-radius:999px;transition:width .5s,background .3s}
+.ruled{margin:14px 0 0;padding:0;list-style:none;font-size:12.5px}
+.ruled li{padding:6px 0;border-top:1px solid var(--line);display:flex;gap:8px}
+.ruled li::before{content:"✕";color:var(--bad);font-weight:800}
+.ruled li.ok::before{content:"✓";color:var(--ok)}
+.note{font-size:12px;color:var(--muted);margin-top:10px}
+.heavynote{margin-top:12px;display:flex;gap:10px;align-items:center;background:#f2f2f4;border-radius:10px;padding:10px 12px;font-size:13px;font-weight:600}
+
+/* Print */
+#printDoc{display:none}
+@media print{
+  @page{margin:14mm}
+  body{background:#fff}
+  .top,.wrap,.toast{display:none!important}
+  #printDoc{display:block;color:#000;font-size:11pt}
+  #printDoc img{height:26px}
+  #printDoc .ph{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #000;padding-bottom:8px;margin-bottom:12px}
+  #printDoc h1{font-size:16pt;margin:8px 0 0}
+  #printDoc table{width:100%;border-collapse:collapse;margin-top:6px}
+  #printDoc th,#printDoc td{text-align:left;padding:4px 6px;border-bottom:1px solid #999;font-size:9.5pt;vertical-align:top}
+  #printDoc th{border-bottom:1.5px solid #000;font-size:8.5pt;text-transform:uppercase}
+  #printDoc td.n,#printDoc th.n{text-align:right}
+  #printDoc .gp td{font-weight:700;border-bottom:1px solid #000;padding-top:10px}
+  #printDoc .tot{margin-top:12px;font-weight:700;font-size:11pt;border-top:2px solid #000;padding-top:8px}
+  #printDoc .veh{margin-top:10px;border:1.5px solid #000;padding:8px 10px}
+  tr{page-break-inside:avoid}
+}
+</style>
+</head>
+<body>
+
+<div class="demo">Portfolio demo · all products, SKUs and orders are fictional sample data · <a href="https://github.com/cjromerofficial-bot/PickupPackingPlanner" target="_blank" rel="noopener">About this project</a></div>
+<header class="top">
+  <div class="top-in">
+    <img class="logo" id="logoTop" alt="PackPlanner">
+    <h1>Pickup &amp; Packing Calculator</h1>
+    <div class="sp"></div>
+    <div class="seg" role="group" aria-label="Weight unit">
+      <button data-unit-w="lb" aria-pressed="true">lb</button><button data-unit-w="kg" aria-pressed="false">kg</button>
+    </div>
+    <div class="seg" role="group" aria-label="Length unit">
+      <button data-unit-d="in" aria-pressed="true">in</button><button data-unit-d="cm" aria-pressed="false">cm</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="col">
+    <!-- Add products -->
+    <section class="card">
+      <div class="card-h">
+        <h2>Add products</h2><div class="sp"></div>
+        <div class="tabs" role="tablist">
+          <button role="tab" aria-selected="true" data-tab="search">Search</button>
+          <button role="tab" aria-selected="false" data-tab="paste">Import order</button>
+        </div>
+      </div>
+      <div class="card-b" id="tab-search">
+        <div class="search">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input id="q" type="search" placeholder="Search products or SKUs — e.g. uprights, cable tower, RK7-CR" autocomplete="off" aria-label="Search products">
+        </div>
+        <div class="cats" id="cats" role="group" aria-label="Filter by category"></div>
+        <label class="allsk"><input type="checkbox" id="allSkus"> Include parts, older and discontinued SKUs</label>
+        <div class="results" id="results"></div>
+        <div class="addbar">
+          <span class="muted" id="selCount">No products selected</span><div class="sp"></div>
+          <button class="btn ghost sm" id="selClear" hidden>Clear selection</button>
+          <button class="btn accent" id="addSel" disabled>Add</button>
+        </div>
+      </div>
+      <div class="card-b" id="tab-paste" hidden>
+        <label class="drop" id="drop">
+          <input type="file" id="fileIn" accept=".pdf,.txt,application/pdf,text/plain,image/*" multiple class="sr">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 16V4m0 0-4 4m4-4 4 4M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>
+          <span><b>Upload a packing slip, sales order, RMA or draft order</b><br><span class="muted">PDF, photo or screenshot · drop here or click to browse</span></span>
+        </label>
+        <div class="importmsg" id="importMsg"></div>
+        <label for="paste" class="muted" style="display:block;margin:14px 0 8px">Or paste text copied from a packing slip, sales order or RMA.</label>
+        <textarea id="paste" placeholder="Bundle Air Bike&#10;Box 1&#10;CD-BIKE-1&#10;Part of: Air Bike&#10;1 of 1"></textarea>
+        <div class="addbar"><button class="btn ghost sm" id="sampleSlip">Paste a sample packing slip</button><div class="sp"></div><button class="btn primary" id="parseBtn">Review items</button></div>
+        <div class="review" id="review"></div>
+      </div>
+    </section>
+
+    <!-- Order -->
+    <section class="card">
+      <div class="card-h"><h2>Order</h2><span class="chip" id="lineCount">0 items</span><div class="sp"></div><button class="btn ghost sm" id="clearAll">Clear all</button></div>
+      <div class="card-b" id="cart"></div>
+    </section>
+
+    <!-- Totals -->
+    <section class="card">
+      <div class="card-h"><h2>Totals</h2></div>
+      <div class="card-b">
+        <div class="stats" id="stats"></div>
+        <div id="totWarn"></div>
+      </div>
+    </section>
+
+    <!-- Packing list -->
+    <section class="card">
+      <div class="card-h"><h2>Packing list</h2></div>
+      <div class="card-b">
+        <div class="pl-row">
+          <div class="seg light" role="group" aria-label="Packing list view">
+            <button data-view="grouped" aria-pressed="true">Grouped</button><button data-view="boxes" aria-pressed="false">Boxes only</button>
+          </div>
+          <div class="field"><label for="orderNo" class="muted">Order #</label><input id="orderNo" placeholder="Optional"></div>
+          <div class="sp"></div>
+          <button class="btn" id="copyBtn">Copy packing list</button>
+          <button class="btn primary" id="printBtn">Print / Save as PDF</button>
+        </div>
+        <pre class="preview" id="plPreview"></pre>
+      </div>
+    </section>
+  </div>
+
+  <div class="col right">
+    <section class="card truck-card">
+      <div class="card-h"><h2>Load preview</h2><div class="sp"></div><span class="muted" id="fillLabel" style="font-size:12px;font-weight:600"></span></div>
+      <div class="card-b">
+        <svg class="truck-svg" id="truck" viewBox="0 0 600 470" role="img" aria-label="Rear view of an open box truck showing the load"></svg>
+        <div id="recBox"></div>
+        <div class="bars" id="bars"></div>
+        <div id="heavyBox"></div>
+        <ul class="ruled" id="ruled"></ul>
+        <p class="note">Preview is an approximation, not an exact packing plan. Recommendations include safety buffers and never assume diagonal loading.</p>
+      </div>
+    </section>
+  </div>
+</main>
+
+<div id="printDoc"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* =====================================================================
+   HOW TO UPDATE THIS TOOL  (no coding experience needed)
+   =====================================================================
+   The product data lives in two blocks further down: ITEMS and BUNDLES.
+   Everything else (product families, variant names, search) is built
+   from those two blocks automatically when the page opens.
+
+   1) Export fresh data from the ERP (NetSuite in the original deployment)
+      a. Item saved search, exported to Excel/CSV with columns:
+           SKU | Display Name | Weight | Weight Units |
+           Sub-Carton Length | Sub-Carton Width | Sub-Carton Height
+         (Lengths in inches. Weight Units "lb" or "kg"; kg is converted to lb.)
+         Do NOT include cost or price columns — they are not used.
+      b. Item Group / Kit saved search, with columns:
+           Type | Name (the parent SKU) | Member Item | Member Quantity
+
+   2) Convert them into the two blocks
+      ITEMS  : one line per SKU →  "SKU":["Display Name", L, W, H, WeightLb],
+               Use null for any missing or zero number. Those items are shown
+               as "Dimensions unavailable — verify manually".
+      BUNDLES: one line per parent →  "PARENT-SKU":[["CHILD-SKU",qty],["CHILD-SKU",qty]],
+      A spreadsheet formula can build each line; e.g. for ITEMS in Excel:
+        ="  """&A2&""":["""&SUBSTITUTE(B2,"""","\""")&""","&F2&","&G2&","&H2&","&D2&"],"
+      Paste the results between the { and } of each block, replacing the old lines.
+
+   3) Product family names
+      Families are grouped by SKU pattern. To rename a family or fix how a
+      product line is grouped, edit FAMILY_RULES / FAMILY_NAMES below.
+
+   4) Vehicles
+      All vehicle sizes, payloads, safety buffers and the heavy-box threshold
+      are in VEHICLE_CONFIG right below. Change a number, save, reload.
+
+   5) Popular products & categories (CATALOG, in catalog.js)
+      From a product catalog / best-sellers list, one line
+      per SKU:  "SKU":["Category","Product Family","Display Name"],
+      SKUs listed here rank higher in search and are tagged "Popular"; the
+      Category powers the filter chips. Only these three columns are used —
+      dimensions and weights always come from ITEMS.
+
+   6) Rebuilding and publishing
+      Run build.sh (see README.md) to combine app.html + data.js + catalog.js
+      into site/index.html, then commit and push.
+   ===================================================================== */
+
+/* =====================================================================
+   VEHICLE CONFIG — all sizes in inches, weights in lb, volume in cubic feet.
+   Values are typical and deliberately conservative (smaller than brochure
+   numbers) because a wasted trip is worse than a bigger vehicle.
+   ===================================================================== */
+const VEHICLE_CONFIG = {
+  weightBuffer: 0.75,        // use at most 75% of the vehicle's typical payload
+  volumeBuffer: 0.65,        // use at most 65% of usable cargo volume (boxes never pack perfectly)
+  lengthClearanceIn: 4,      // longest box must be at least this much shorter than the cargo floor
+  heavyBoxLb: 150,           // boxes above this get the "Heavy — staff loading assist" tag
+  vehicles: [                // smallest to largest; the first one that passes every check is recommended
+    { id:"car",    name:"Car",          detail:"Sedan trunk + folded rear seat", payloadLb:850,  cargoLengthIn:60,  openingWidthIn:38, openingHeightIn:16, volumeCuFt:16  },
+    { id:"suv",    name:"SUV",          detail:"Rear seats folded",              payloadLb:1100, cargoLengthIn:70,  openingWidthIn:42, openingHeightIn:28, volumeCuFt:55  },
+    { id:"pickup", name:"Pickup Truck", detail:"Standard ~6.5 ft bed, tailgate up", payloadLb:1500, cargoLengthIn:78, openingWidthIn:48, openingHeightIn:40, volumeCuFt:55  },
+    { id:"van",    name:"Cargo Van",    detail:"Full-size, rear doors",          payloadLb:3000, cargoLengthIn:120, openingWidthIn:49, openingHeightIn:50, volumeCuFt:240 },
+    { id:"box",    name:"Box Truck",    detail:"U-Haul style, 10–15 ft",         payloadLb:2800, cargoLengthIn:118, openingWidthIn:72, openingHeightIn:68, volumeCuFt:380 },
+  ],
+  fallback: { id:"trailer", name:"Trailer", message:"Trailer or multiple trips — contact the warehouse team." },
+};
+
+/* =====================================================================
+   FAMILY RULES — how bundle SKUs are grouped into product families and
+   how their variant labels are written. Checked top to bottom.
+   ===================================================================== */
+const FAMILY_RULES = [
+  { key:"CABLE2",  name:"Dual Cable Tower Attachment",  test:/^CT-\d{4}-DUAL-/ },
+  { key:"SIDE",    name:"Side-Mount Cable Trainer",     test:/^CT-\d{4}-SIDE-/ },
+];
+/* =====================================================================
+   PRODUCT RULES — how the search list is laid out (modeled on Shopify's
+   "Select products" picker). Each rule claims SKUs by pattern and gives
+   the option label. Colors are left out of labels on purpose: options whose
+   boxes have the same sizes and weights are merged, and the color can be
+   picked on the order line. Add a rule here to tidy up any product line.
+   m = the pattern match, name = the ERP display name.
+   ===================================================================== */
+const KNURL = { "01":"Standard Knurl", "02":"Aggressive Knurl" };
+const inches = name => { const m = String(name).match(/(\d+(?:\.\d+)?)\s*(?:"|in\b|IN\b)/); return m ? m[1]+'"' : ""; };
+const PRODUCT_RULES = [
+  { title:"SR-7 Rack Uprights",    sku:/^RK7-UP-\d+-[A-Z]+(-4)?$/,      label:(m,n) => `${m[1]?"Set of 4 (2 pairs)":"Pair"} / ${inches(n)}` },
+  { title:"SR-5 Rack Uprights",    sku:/^RK5-UP-\d+-[A-Z]+(-4)?$/,      label:(m,n) => `${m[1]?"Set of 4 (2 pairs)":"Pair"} / ${inches(n)}` },
+  { title:"SR-7 Crossmembers",     sku:/^RK7-CR-(\d{2})-[A-Z]+(-4)?$/,  label:(m,n) => `${m[2]?"Set of 4 (2 pairs)":"Pair"} / ${inches(n) || m[1]+'"'}` },
+  { title:"Logo Plate Crossmember", sku:/^RK7-LPC-(STD|STAMP|CMP)$/,    label:m => ({ STD:"Standard", STAMP:"Stamped", CMP:"Compact" })[m[1]] },
+  { title:"Smith Attachment",      sku:/^SM-7-FULL-(80|93)-(0[12])$/,   label:m => `Complete / ${m[1]}" / ${KNURL[m[2]]}` },
+  { title:"Smith Attachment",      sku:/^SM-BAR-(0[12])$/,              label:m => `Barbell only / ${KNURL[m[1]]}` },
+  { title:"Smith Attachment",      sku:/^SM-BASE-(80|93)$/,             label:m => `Base structure only / ${m[1]}"` },
+  { title:"Smith Attachment",      sku:/^SM-HWP$/,                      label:() => "Hardware kit only" },
+];
+// SKUs seen on real orders. They rank first and are tagged "Popular" (sample list for the demo).
+// SKUs from orders imported during a session are added automatically while the page is open.
+const POPULAR_SKUS = [
+  "RK7-UP-80-MBLK","RK7-UP-93-MBLK-4","RK7-CR-16-MBLK","RK7-CR-30-MBLK","RK7-LPC-STD",
+  "CT-7000-DUAL-6-8030-S","SM-7-FULL-80-01","PL-BMP-45-2","BN-ADJ-MBLK","CD-AIRBIKE",
+];
+// Optional display-name overrides for any automatically named family: { "FAMILY-KEY": "Name" }
+const FAMILY_NAMES = {};
+// Short codes that appear at the end of SKUs, turned into readable variant labels.
+const CODE_LABELS = {
+  MBLK:"Matte Black", BLK:"Black", WHT:"White", OLV:"Olive Green", RED:"Red", BLU:"Blue", BLUE:"Blue",
+  RAW:"Clear Coat", GRY:"Gray", GRN:"Green", NVY:"Navy", ORG:"Orange", TAN:"Tan", KG:"KG", LB:"LB", EU:"EU",
+  LE:"Limited Edition", SET:"Set",
+};
+
+/* =====================================================================
+   LOGOS — embedded as data URIs so the file works offline. Generic marks
+   for the public demo; swap in a brand's artwork for a real deployment.
+   ===================================================================== */
+const BOX_ICON = (c, bg) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 168 30"><g fill="none" stroke="${c}" stroke-width="2.4" stroke-linejoin="round"><path d="M3 9 14 3l11 6v13l-11 6-11-6z"/><path d="M3 9l11 6 11-6M14 15v13"/></g><text x="34" y="21" font-family="Archivo,Arial,sans-serif" font-weight="800" font-size="15" fill="${c}" letter-spacing=".3">PACKPLANNER</text></svg>`;
+const LOGO_WHITE = "data:image/svg+xml," + encodeURIComponent(BOX_ICON("#fff"));
+const LOGO_BLACK = "data:image/svg+xml," + encodeURIComponent(BOX_ICON("#000"));
+const LOGO_MARK  = LOGO_WHITE;
+
+/* =====================================================================
+   ITEMS — every SKU:  "SKU":["Display Name", Length in, Width in, Height in, Weight lb]
+   BUNDLES — parent SKU → child boxes:  "PARENT":[["CHILD",qty], ...]
+   PUBLIC DEMO: the data below is a fictional sample catalog (no real products or company data).
+   ===================================================================== */
+// SAMPLE DATA — a fictional gym-equipment catalog for demonstration only.
+// Product names, SKUs, dimensions and weights are invented but realistic in scale.
+// In production these blocks are generated from ERP item and bundle exports.
+const ITEMS = {
+  // ---- Racks: uprights (pairs) — colors share a box, except stainless (lighter) ----
+  "RK7-UP-80-MBLK":["SR-7 Rack Uprights Pair - 80\" - Matte Black",83.5,8.9,7.3,65],
+  "RK7-UP-80-WHT":["SR-7 Rack Uprights Pair - 80\" - White",83.5,8.9,7.3,65],
+  "RK7-UP-80-RED":["SR-7 Rack Uprights Pair - 80\" - Red",83.5,8.9,7.3,65],
+  "RK7-UP-80-BLU":["SR-7 Rack Uprights Pair - 80\" - Blue",83.5,8.9,7.3,65],
+  "RK7-UP-80-RAW":["SR-7 Rack Uprights Pair - 80\" - Clear Coat",83.5,8.9,7.3,65],
+  "RK7-UP-80-SS":["SR-7 Rack Uprights Pair - 80\" - Stainless Steel",83.5,8.9,7.3,58.4],
+  "RK7-UP-93-MBLK":["SR-7 Rack Uprights Pair - 93\" - Matte Black",96.2,8.9,7.3,74.2],
+  "RK7-UP-93-WHT":["SR-7 Rack Uprights Pair - 93\" - White",96.2,8.9,7.3,74.2],
+  "RK7-UP-93-RED":["SR-7 Rack Uprights Pair - 93\" - Red",96.2,8.9,7.3,74.2],
+  "RK7-UP-93-BLU":["SR-7 Rack Uprights Pair - 93\" - Blue",96.2,8.9,7.3,74.2],
+  "RK5-UP-80-MBLK":["SR-5 Rack Uprights Pair - 80\" - Matte Black",83,8,7,71.5],
+  "RK5-UP-80-WHT":["SR-5 Rack Uprights Pair - 80\" - White",83,8,7,71.5],
+  "RK5-UP-93-MBLK":["SR-5 Rack Uprights Pair - 93\" - Matte Black",96,8,8,80.3],
+  // ---- Racks: crossmembers (pairs) ----
+  "RK7-CR-16-MBLK":["SR-7 Crossmember Pair - 16\" - Matte Black",19.5,10.3,7.2,26.1],
+  "RK7-CR-16-WHT":["SR-7 Crossmember Pair - 16\" - White",19.5,10.3,7.2,26.1],
+  "RK7-CR-16-RED":["SR-7 Crossmember Pair - 16\" - Red",19.5,10.3,7.2,26.1],
+  "RK7-CR-30-MBLK":["SR-7 Crossmember Pair - 30\" - Matte Black",33.5,10.3,7.2,35.4],
+  "RK7-CR-30-WHT":["SR-7 Crossmember Pair - 30\" - White",33.5,10.3,7.2,35.4],
+  "RK7-CR-30-RED":["SR-7 Crossmember Pair - 30\" - Red",33.5,10.3,7.2,35.4],
+  "RK7-CR-41-MBLK":["SR-7 Crossmember Pair - 41\" - Matte Black",44.5,10.3,7.2,43.2],
+  "RK7-CR-41-WHT":["SR-7 Crossmember Pair - 41\" - White",44.5,10.3,7.2,43.2],
+  "RK7-LPC-STD":["SR-7 Logo Plate Crossmember - Standard",44,10,7,40.5],
+  "RK7-LPC-STAMP":["SR-7 Logo Plate Crossmember - Stamped",44,10,7,41.2],
+  "RK7-LPC-CMP":["SR-7 Logo Plate Crossmember - Compact",22,10,7,24],
+  // ---- Rack attachments ----
+  "RK7-PU-125":["SR-7 Pull-Up Bar - 1.25\"",50,5,4,18.2],
+  "RK7-JC-FLAT":["SR-7 Flat J-Cups - Pair",12,10,6,14.3],
+  "RK7-SAFE-30":["SR-7 Strap Safeties - 30\" - Pair",34,10,6,27.8],
+  "RK7-SAFE-41":["SR-7 Strap Safeties - 41\" - Pair",45,10,6,33.1],
+  // ---- Smith attachment ----
+  "SM-BASE-80":["Smith Attachment Base Structure - 80\"",77.6,15.2,8.2,124.3],
+  "SM-BASE-93":["Smith Attachment Base Structure - 93\"",90.2,15.2,8.2,141],
+  "SM-BAR-01":["Smith Barbell - Standard Knurl",76,10.6,4.7,34.1],
+  "SM-BAR-02":["Smith Barbell - Aggressive Knurl",76,10.6,4.7,34.1],
+  "SM-HWP":["Smith Attachment Hardware Kit",16.7,11.2,3.1,14.7],
+  // ---- Cable tower attachment (dual) & side-mount trainer ----
+  "CT-BASE-7000":["Cable Tower Base & Weight Stacks Crate",44.9,37.8,26.8,968],
+  "CT-TROLLEY":["Cable Tower Trolley Pair",15.5,9.5,10.5,25],
+  "CT-GR-80":["Cable Tower Guide Rod Package - 80\"",86.2,3,3,29.5],
+  "CT-GR-93":["Cable Tower Guide Rod Package - 93\"",96.2,3,3,34.3],
+  "CT-CABLE-4-80":["Cable Package - 80\" - 4-Post",10.4,10.4,2.8,5.6],
+  "CT-CABLE-4-93":["Cable Package - 93\" - 4-Post",10.4,10.4,2.8,6.1],
+  "CT-CABLE-6-8030":["Cable Package - 80\" - 30\" - 6-Post",10.4,10.4,2.8,6.2],
+  "CT-CABLE-6-9330":["Cable Package - 93\" - 30\" - 6-Post",10.4,10.4,2.8,6.6],
+  "CT-SIDE-L-1":["Side-Mount Trainer Left Base - Box 1",48,20,14,182],
+  "CT-SIDE-L-2":["Side-Mount Trainer Left Base - Box 2",30,16,10,61],
+  "CT-SIDE-R-1":["Side-Mount Trainer Right Base - Box 1",48,20,14,182],
+  "CT-SIDE-R-2":["Side-Mount Trainer Right Base - Box 2",30,16,10,61],
+  "CT-SIDE-HEAD":["Side-Mount Trainer Headplate Package",20,14,8,38],
+  "CT-STACK-50":["Weight Stack Package - 50 lb",14,8,6,50.8],
+  // ---- Plates & dumbbells ----
+  "PL-BMP-10":["Bumper Plate - 10 lb",18,18,1.5,10.6],
+  "PL-BMP-25":["Bumper Plate - 25 lb",18,18,2.5,25.9],
+  "PL-BMP-35":["Bumper Plate - 35 lb",18,18,3,36.1],
+  "PL-BMP-45":["Bumper Plate - 45 lb",18,18,3.5,46.2],
+  "DB-HEX-25":["Rubber Hex Dumbbell - 25 lb - Single",12,6,6,25.6],
+  "DB-HEX-50":["Rubber Hex Dumbbell - 50 lb - Single",14,8,7,50.9],
+  "DB-HEX-CRATE-5-100":["Rubber Hex Dumbbell Set 5-100 lb - Crate",40,24,20,2140],
+  // ---- Benches ----
+  "BN-ADJ-FRAME-MBLK":["Adjustable Bench Frame - Matte Black",50,18,12,85.4],
+  "BN-ADJ-FRAME-RAW":["Adjustable Bench Frame - Clear Coat",50,18,12,85.4],
+  "BN-ADJ-PAD":["Adjustable Bench Pads - Seat & Back",46,14,8,18.2],
+  "BN-FLAT":["Flat Bench",48,14,10,52],
+  // ---- Storage & flooring (one item intentionally missing dimensions) ----
+  "ST-DB-RACK":["Dumbbell Storage Rack",52,20,8,96],
+  "FL-MAT-4x6":["Rubber Gym Mat - 4' x 6' x 3/4\"",null,null,null,100],
+  "FL-TILE-2x2-4PK":["Interlocking Floor Tiles 2' x 2' - 4 Pack",24,24,4,32],
+  // ---- Cardio & accessories ----
+  "CD-BIKE-1":["Air Bike - Box 1 - Frame",50,24,15,110],
+  "CD-BIKE-2":["Air Bike - Box 2 - Fan & Console",40,20,18,58],
+  "CD-ROWER":["Rowing Machine",56,23,13,70],
+  "AC-BAND-SET":["Resistance Band Set",12,8,4,6.1],
+  "AC-ROPE":["Tricep Rope",14,6,4,2.8],
+  "AC-SHAKER":["Shaker Bottle - 26 oz",6,4,4,0.5],
+};
+const BUNDLES = {
+  "RK7-UP-80-MBLK-4":[["RK7-UP-80-MBLK",2]],
+  "RK7-UP-93-MBLK-4":[["RK7-UP-93-MBLK",2]],
+  "RK7-CR-16-MBLK-4":[["RK7-CR-16-MBLK",2]],
+  "SM-7-FULL-80-01":[["SM-BASE-80",1],["SM-BAR-01",1],["SM-HWP",1]],
+  "SM-7-FULL-80-02":[["SM-BASE-80",1],["SM-BAR-02",1],["SM-HWP",1]],
+  "SM-7-FULL-93-01":[["SM-BASE-93",1],["SM-BAR-01",1],["SM-HWP",1]],
+  "SM-7-FULL-93-02":[["SM-BASE-93",1],["SM-BAR-02",1],["SM-HWP",1]],
+  "CT-7000-DUAL-4-80-S":[["CT-BASE-7000",1],["CT-TROLLEY",1],["CT-GR-80",1],["CT-CABLE-4-80",1]],
+  "CT-7000-DUAL-4-93-S":[["CT-BASE-7000",1],["CT-TROLLEY",1],["CT-GR-93",1],["CT-CABLE-4-93",1]],
+  "CT-7000-DUAL-6-8030-S":[["CT-BASE-7000",1],["CT-TROLLEY",1],["CT-GR-80",1],["CT-CABLE-6-8030",1]],
+  "CT-7000-DUAL-6-9330-S":[["CT-BASE-7000",1],["CT-TROLLEY",1],["CT-GR-93",1],["CT-CABLE-6-9330",1]],
+  "CT-7000-SIDE-6-8030-S-2":[["CT-SIDE-L-1",1],["CT-SIDE-L-2",1],["CT-SIDE-R-1",1],["CT-SIDE-R-2",1],["CT-SIDE-HEAD",2],["CT-GR-80",2],["CT-CABLE-6-8030",2],["CT-STACK-50",6]],
+  "CT-7000-SIDE-6-9330-S-2":[["CT-SIDE-L-1",1],["CT-SIDE-L-2",1],["CT-SIDE-R-1",1],["CT-SIDE-R-2",1],["CT-SIDE-HEAD",2],["CT-GR-93",2],["CT-CABLE-6-9330",2],["CT-STACK-50",6]],
+  "PL-BMP-45-2":[["PL-BMP-45",2]],
+  "PL-BMP-25-2":[["PL-BMP-25",2]],
+  "PL-BMP-SET-230":[["PL-BMP-10",2],["PL-BMP-25",2],["PL-BMP-35",2],["PL-BMP-45",2]],
+  "DB-HEX-25-2":[["DB-HEX-25",2]],
+  "DB-HEX-50-2":[["DB-HEX-50",2]],
+  "BN-ADJ-MBLK":[["BN-ADJ-FRAME-MBLK",1],["BN-ADJ-PAD",1]],
+  "BN-ADJ-RAW":[["BN-ADJ-FRAME-RAW",1],["BN-ADJ-PAD",1]],
+  "CD-AIRBIKE":[["CD-BIKE-1",1],["CD-BIKE-2",1]],
+};
+// SAMPLE DATA — category, product family and customer-facing name for the "core" catalog.
+// Items listed here show in normal search; everything else is under "Include parts, older and discontinued SKUs".
+const CATALOG = {
+  "RK7-UP-80-MBLK":["Racks & Rigs","Power Racks","SR-7 Rack Uprights Pair - 80\" - Matte Black"],
+  "RK7-UP-80-WHT":["Racks & Rigs","Power Racks","SR-7 Rack Uprights Pair - 80\" - White"],
+  "RK7-UP-80-RED":["Racks & Rigs","Power Racks","SR-7 Rack Uprights Pair - 80\" - Red"],
+  "RK7-UP-80-BLU":["Racks & Rigs","Power Racks","SR-7 Rack Uprights Pair - 80\" - Blue"],
+  "RK7-UP-80-RAW":["Racks & Rigs","Power Racks","SR-7 Rack Uprights Pair - 80\" - Clear Coat"],
+  "RK7-UP-80-SS":["Racks & Rigs","Power Racks","SR-7 Rack Uprights Pair - 80\" - Stainless Steel"],
+  "RK7-UP-93-MBLK":["Racks & Rigs","Power Racks","SR-7 Rack Uprights Pair - 93\" - Matte Black"],
+  "RK7-UP-93-WHT":["Racks & Rigs","Power Racks","SR-7 Rack Uprights Pair - 93\" - White"],
+  "RK7-UP-93-RED":["Racks & Rigs","Power Racks","SR-7 Rack Uprights Pair - 93\" - Red"],
+  "RK7-UP-93-BLU":["Racks & Rigs","Power Racks","SR-7 Rack Uprights Pair - 93\" - Blue"],
+  "RK5-UP-80-MBLK":["Racks & Rigs","Power Racks","SR-5 Rack Uprights Pair - 80\" - Matte Black"],
+  "RK5-UP-80-WHT":["Racks & Rigs","Power Racks","SR-5 Rack Uprights Pair - 80\" - White"],
+  "RK5-UP-93-MBLK":["Racks & Rigs","Power Racks","SR-5 Rack Uprights Pair - 93\" - Matte Black"],
+  "RK7-CR-16-MBLK":["Racks & Rigs","Power Racks","SR-7 Crossmember Pair - 16\" - Matte Black"],
+  "RK7-CR-16-WHT":["Racks & Rigs","Power Racks","SR-7 Crossmember Pair - 16\" - White"],
+  "RK7-CR-16-RED":["Racks & Rigs","Power Racks","SR-7 Crossmember Pair - 16\" - Red"],
+  "RK7-CR-30-MBLK":["Racks & Rigs","Power Racks","SR-7 Crossmember Pair - 30\" - Matte Black"],
+  "RK7-CR-30-WHT":["Racks & Rigs","Power Racks","SR-7 Crossmember Pair - 30\" - White"],
+  "RK7-CR-30-RED":["Racks & Rigs","Power Racks","SR-7 Crossmember Pair - 30\" - Red"],
+  "RK7-CR-41-MBLK":["Racks & Rigs","Power Racks","SR-7 Crossmember Pair - 41\" - Matte Black"],
+  "RK7-CR-41-WHT":["Racks & Rigs","Power Racks","SR-7 Crossmember Pair - 41\" - White"],
+  "RK7-LPC-STD":["Racks & Rigs","Power Racks","SR-7 Logo Plate Crossmember - Standard"],
+  "RK7-LPC-STAMP":["Racks & Rigs","Power Racks","SR-7 Logo Plate Crossmember - Stamped"],
+  "RK7-LPC-CMP":["Racks & Rigs","Power Racks","SR-7 Logo Plate Crossmember - Compact"],
+  "RK7-PU-125":["Racks & Rigs","Rack Attachments","SR-7 Pull-Up Bar - 1.25\""],
+  "RK7-JC-FLAT":["Racks & Rigs","Rack Attachments","SR-7 Flat J-Cups - Pair"],
+  "RK7-SAFE-30":["Racks & Rigs","Rack Attachments","SR-7 Strap Safeties - 30\""],
+  "RK7-SAFE-41":["Racks & Rigs","Rack Attachments","SR-7 Strap Safeties - 41\""],
+  "SM-BASE-80":["Racks & Rigs","Rack Attachments","Smith Attachment Base Structure - 80\""],
+  "SM-BASE-93":["Racks & Rigs","Rack Attachments","Smith Attachment Base Structure - 93\""],
+  "SM-BAR-01":["Barbells","Rack Attachments","Smith Barbell - Standard Knurl"],
+  "SM-BAR-02":["Barbells","Rack Attachments","Smith Barbell - Aggressive Knurl"],
+  "SM-HWP":["Racks & Rigs","Rack Attachments","Smith Attachment Hardware Kit"],
+  "CT-SIDE-L-1":["Cable Machines","Functional Trainers","Side-Mount Trainer Left Base - Box 1"],
+  "CT-SIDE-L-2":["Cable Machines","Functional Trainers","Side-Mount Trainer Left Base - Box 2"],
+  "CT-SIDE-R-1":["Cable Machines","Functional Trainers","Side-Mount Trainer Right Base - Box 1"],
+  "CT-SIDE-R-2":["Cable Machines","Functional Trainers","Side-Mount Trainer Right Base - Box 2"],
+  "CT-SIDE-HEAD":["Cable Machines","Functional Trainers","Side-Mount Trainer Headplate Package"],
+  "CT-STACK-50":["Cable Machines","Functional Trainers","Weight Stack Package - 50 lb"],
+  "PL-BMP-10":["Plates","Bumper Plates","Bumper Plate - 10 lb"],
+  "PL-BMP-25":["Plates","Bumper Plates","Bumper Plate - 25 lb"],
+  "PL-BMP-35":["Plates","Bumper Plates","Bumper Plate - 35 lb"],
+  "PL-BMP-45":["Plates","Bumper Plates","Bumper Plate - 45 lb"],
+  "DB-HEX-25":["Dumbbells","Dumbbells","Rubber Hex Dumbbell - 25 lb - Single"],
+  "DB-HEX-50":["Dumbbells","Dumbbells","Rubber Hex Dumbbell - 50 lb - Single"],
+  "DB-HEX-CRATE-5-100":["Dumbbells","Dumbbell Sets","Rubber Hex Dumbbell Set 5-100 lb - Crate"],
+  "BN-ADJ-FRAME-MBLK":["Benches","Adjustable Benches","Adjustable Bench Frame - Matte Black"],
+  "BN-ADJ-FRAME-RAW":["Benches","Adjustable Benches","Adjustable Bench Frame - Clear Coat"],
+  "BN-ADJ-PAD":["Benches","Adjustable Benches","Adjustable Bench Pads - Seat & Back"],
+  "BN-FLAT":["Benches","Flat Benches","Flat Bench"],
+  "ST-DB-RACK":["Storage & Flooring","Weight Storage","Dumbbell Storage Rack"],
+  "FL-MAT-4x6":["Storage & Flooring","Gym Flooring","Rubber Gym Mat - 4' x 6' x 3/4\""],
+  "FL-TILE-2x2-4PK":["Storage & Flooring","Gym Flooring","Interlocking Floor Tiles 2' x 2' - 4 Pack"],
+  "CD-BIKE-1":["Cardio","Bikes","Air Bike - Box 1 - Frame"],
+  "CD-BIKE-2":["Cardio","Bikes","Air Bike - Box 2 - Fan & Console"],
+  "CD-ROWER":["Cardio","Rowers","Rowing Machine"],
+  "AC-BAND-SET":["Accessories & Conditioning","Bands","Resistance Band Set"],
+  "AC-ROPE":["Accessories & Conditioning","Cable Attachments","Tricep Rope"],
+  "AC-SHAKER":["Accessories & Conditioning","","Shaker Bottle - 26 oz"],
+};
+
+/* =====================================================================
+   APP CODE — nothing below needs editing for routine data updates.
+   ===================================================================== */
+(function(){
+"use strict";
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const norm = s => String(s||"").normalize("NFKD").toLowerCase().replace(/[™®©]/g,"").replace(/[^a-z0-9]+/g,"");
+
+/* ---------- lookups ---------- */
+const SKU_INDEX = new Map();                       // UPPERCASE → real SKU
+for (const k of Object.keys(ITEMS)) SKU_INDEX.set(k.toUpperCase(), k);
+for (const k of Object.keys(BUNDLES)) SKU_INDEX.set(k.toUpperCase(), k);
+
+function box(sku){                                  // physical box info
+  const r = ITEMS[sku];
+  if (!r) return { sku, name:sku, L:null, W:null, H:null, wt:null, valid:false, missing:true };
+  const [name,L,W,H,wt] = r;
+  return { sku, name, L, W, H, wt, valid: L>0 && W>0 && H>0 && wt>0 };
+}
+function childrenOf(sku){                           // weight/dims always come from child boxes
+  return BUNDLES[sku] ? BUNDLES[sku] : [[sku,1]];
+}
+
+/* =====================================================================
+   FAMILIES — built at load from ITEMS + BUNDLES.
+   FAMILIES: [{ key, name, derived, variants:[{ sku, label }] }]
+   ===================================================================== */
+const VARIANT_TOKENS = new Set(Object.keys(CODE_LABELS).concat(["US","CA","LOCAL","SPARE","V2","V3"]));
+function isVariantTok(t,i){
+  return VARIANT_TOKENS.has(t) || t.length===1 || (i>=2 && /^\d+(\.\d+)?$/.test(t)) || /^\d+(MM|KG|LB|IN|LBS)$/.test(t) || /^\(.*\)$/.test(t);
+}
+function famKey(sku){
+  const s = sku.toUpperCase().replace(/\(.*\)$/,"");
+  for (const r of FAMILY_RULES) if (r.test.test(s)) return r.key;
+  const t = s.split("-");
+  if (/^\d+$/.test(t[0])) return t.slice(0,2).join("-");
+  const k = [t[0]];
+  for (let i=1;i<t.length && k.length<3;i++){ if (isVariantTok(t[i],i)) break; k.push(t[i]); }
+  return k.join("-");
+}
+function codeLabel(tokens){
+  return tokens.filter(Boolean).map(t => CODE_LABELS[t] || t.replace(/^\((\d+)\)$/,"×$1")).join(" / ");
+}
+function cableLabel(sku){                           // e.g. CT-7000-DUAL-6-8030-S → 7000 / 80" / 30"+16" / Selectorized
+  const s = sku.toUpperCase();
+  // (placeholder for special-case SKUs; none in the sample catalog)
+  const m = s.match(/^CT-(\d{4})-(?:DUAL|SIDE)-(.*)$/);
+  if (!m) return codeLabel(s.split("-").slice(2));
+  const ser = m[1];
+  const t = m[2].split("-"); const out=[ser]; let i=0;
+  if (t[i]==="4"){ i++; let xm='16"'; if (/^\d{2}$/.test(t[i]) && /^\d{2}$/.test(t[i+1]||"")){ xm=t[i]+'"'; i++; } if (/^\d{2}$/.test(t[i])) out.push(t[i++]+'"'); out.push(xm); }
+  else if (t[i]==="6"){ i++; const h=t[i++]||""; if (h.length===4) out.push(h.slice(0,2)+'"', h.slice(2)+'"+16"'); else out.push(h); }
+  const rest = { S:"Selectorized", P:"Plate-loaded", "2":"Pair", L:"Left", R:"Right", KG:"KG plates", LB:"LB plates", LE:"Limited Edition", EU:"EU", UPGRADE:"Upgrade" };
+  for (;i<t.length;i++){ if (t[i]==="S" && !/SIDE/.test(s)) continue; out.push(rest[t[i]] || (/^\d{2}$/.test(t[i])?t[i]+'"':t[i])); }
+  return out.join(" / ");
+}
+function baseName(n){ return String(n||"").split(" - ")[0].trim(); }
+function commonPrefix(names){
+  const ws = names.map(n => n.split(/\s+/));
+  const out=[]; for (let i=0;;i++){ const w = ws[0][i]; if (!w || !ws.every(x => (x[i]||"").toLowerCase()===w.toLowerCase())) break; out.push(w); }
+  return out.join(" ").replace(/[\s\-–,/(]+$/,"").replace(/\s+-\s+Box$|\s+Box$/i,"").trim();
+}
+function nameSource(sku){                           // best human name for a SKU
+  if (!BUNDLES[sku]) return CATALOG[sku] ? CATALOG[sku][2] : (ITEMS[sku]||[sku])[0];
+  const kids = BUNDLES[sku].map(([c])=>c);
+  const bases = [...new Set(kids.map(c => baseName((ITEMS[c]||[c])[0])))];
+  if (bases.length<=3) return bases.join(" + ");
+  let best=null, bl=-1, bw=-1; const P=sku.toUpperCase();
+  for (const c of kids){ const C=c.toUpperCase(); let l=0; while(l<C.length && C[l]===P[l]) l++; const w=(ITEMS[c]||[])[4]||0; if (l>bl || (l===bl && w>bw)){best=c;bl=l;bw=w;} }
+  return baseName((ITEMS[best]||[best])[0]);
+}
+function majority(list){
+  const c = {}; let best = "", n = 0;
+  for (const x of list) if (x){ c[x] = (c[x]||0) + 1; if (c[x] > n){ n = c[x]; best = x; } }
+  return best;
+}
+function catOf(sku){                                // bundles take the most common category of their boxes
+  if (CATALOG[sku]) return CATALOG[sku][0];
+  return BUNDLES[sku] ? majority(BUNDLES[sku].map(([c]) => (CATALOG[c]||[])[0])) : "";
+}
+function isPopular(sku){                            // listed in the product catalog, or a bundle mostly made of catalog items
+  if (CATALOG[sku]) return true;
+  const k = BUNDLES[sku]; if (!k) return false;
+  return k.filter(([c]) => CATALOG[c]).length / k.length >= 0.5;
+}
+const FAMILIES = (function build(){
+  const map = new Map();
+  const all = new Set([...Object.keys(BUNDLES), ...Object.keys(ITEMS)]);
+  for (const sku of all){
+    const key = famKey(sku);
+    if (!map.has(key)) map.set(key, { key, skus:[] });
+    map.get(key).skus.push(sku);
+  }
+  const fams = [];
+  for (const f of map.values()){
+    const rule = FAMILY_RULES.find(r => r.key===f.key);
+    const srcs = f.skus.map(nameSource);
+    let name = FAMILY_NAMES[f.key] || (rule && rule.name);
+    let derived = false;
+    if (!name){
+      name = f.skus.length>1 ? commonPrefix(srcs) : srcs[0];
+      if (!name || name.length<6){ const cnt={}; srcs.forEach(s=>{const b=baseName(s);cnt[b]=(cnt[b]||0)+1;}); name=Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0][0]; }
+      derived = f.skus.some(s => BUNDLES[s]);          // bundle parents have no name in the export
+    }
+    const prefixLen = name.length;
+    const variants = f.skus.map((sku,i) => {
+      let label;
+      if (rule && /^(CABLE2|SIDE)$/.test(f.key)) label = cableLabel(sku);
+      else if (rule && rule.strip){ const m={"02":"2.0",UPGRADE:"Upgrade",CONVERSION:"Conversion",S:"Selectorized","2":"Pair",EU:"EU",KG:"KG plates"}; label = sku.toUpperCase().replace(rule.strip,"").split("-").map(t=>m[t]||t).join(" / "); }
+      else if (BUNDLES[sku] || rule){ const rest = sku.toUpperCase().startsWith(f.key+"-") ? sku.slice(f.key.length+1) : (rule? sku.split("-").slice(2).join("-") : ""); label = codeLabel(rest.split("-")) || (BUNDLES[sku] && f.skus.length===1 ? "Standard" : ""); if (BUNDLES[sku] && srcs[i] && srcs[i]!==name && !rule && srcs[i].length<60) label = label ? label : srcs[i]; }
+      else { const n = srcs[i]; label = (f.skus.length>1 && n.toLowerCase().startsWith(name.toLowerCase())) ? n.slice(prefixLen).replace(/^[\s\-–,:]+/,"") : (f.skus.length>1 ? n : ""); }
+      return { sku, label: label || "Standard", src: srcs[i] };
+    }).sort((a,b) => a.label.localeCompare(b.label, undefined, {numeric:true}));
+    const fam = { key:f.key, name, derived, variants };
+    for (const v of variants){ v.fam = fam; v.hay = norm(v.label)+" "+norm(v.sku)+" "+norm(v.src); v.boxes = childrenOf(v.sku).length; v.bad = childrenOf(v.sku).some(([c]) => !box(c).valid); v.cat = catOf(v.sku); v.pop = isPopular(v.sku); }
+    fam.cat = majority(variants.map(v => v.cat));
+    fam.pop = variants.filter(v => v.pop).length;
+    fam.group = majority(variants.map(v => (CATALOG[v.sku]||[])[1]));   // family label from the product catalog, if any
+    fam.hay = norm(name) + " " + norm(f.key) + " " + norm(fam.group);
+    fams.push(fam);
+  }
+  return fams.sort((a,b)=>a.name.localeCompare(b.name));
+})();
+const VARIANT = new Map(); FAMILIES.forEach(f => f.variants.forEach(v => VARIANT.set(v.sku, v)));
+function displayName(sku){
+  const po = typeof PRODUCT_OF!=="undefined" && PRODUCT_OF.get(sku);
+  if (po && BUNDLES[sku]) return po.o.label && po.o.label!=="Standard" ? `${po.p.title} — ${po.o.label}` : po.p.title;
+  const v = VARIANT.get(sku); if (!v) return sku;
+  if (!BUNDLES[sku] && ITEMS[sku]) return ITEMS[sku][0];
+  return v.label && v.label!=="Standard" ? `${v.fam.name} — ${v.label}` : v.fam.name;
+}
+window.APP_DEBUG = { FAMILIES, unsureFamilies: () => FAMILIES.filter(f=>f.derived).map(f=>`${f.key}: ${f.name}`) };
+
+/* ---------- state (memory only) ---------- */
+const state = { lines:[], w:"lb", d:"in", view:"grouped", orderNo:"", open:new Set(), sel:new Set(), nextId:1, pasteRows:null, cat:"", all:false };
+
+/* ---------- units ---------- */
+const r1 = n => (Math.round(n*10)/10).toLocaleString(undefined,{minimumFractionDigits:1,maximumFractionDigits:1});
+const fW = lb => lb==null ? "—" : r1(state.w==="kg" ? lb*0.45359237 : lb);
+const fD = inch => inch==null ? "—" : r1(state.d==="cm" ? inch*2.54 : inch);
+const fV = cuin => state.d==="cm" ? r1(cuin*1.6387064e-5)+" m³" : r1(cuin/1728)+" ft³";
+// Each size/weight number is its own copy button (handy for carrier forms that take one value at a time).
+const plain = v => (Math.round(v*10)/10).toFixed(1);
+function copyMeta(b){
+  if (!b.valid) return `<span><b>${dims(b)}</b></span>`;
+  const cp = (lab, name, v) => `<button type="button" class="cp" data-copy="${v}" data-what="${name}" title="Copy ${name}"><span class="cp-l">${lab}</span>${v}</button>`;
+  const dl = v => plain(state.d==="cm" ? v*2.54 : v), wl = v => plain(state.w==="kg" ? v*0.45359237 : v);
+  return `<span class="cps">${cp("L","length",dl(b.L))}${cp("W","width",dl(b.W))}${cp("H","height",dl(b.H))}<span class="cp-u">${state.d}</span></span>`+
+    `<span class="cps">${cp("Wt","weight",wl(b.wt))}<span class="cp-u">${state.w} / box</span></span>`;
+}
+const dims = b => b.valid ? `${fD(b.L)} x ${fD(b.W)} x ${fD(b.H)}` : "Dimensions unavailable — verify manually";
+
+/* ---------- compute ---------- */
+function compute(){
+  const boxes=[], rows=[];
+  let count=0, weight=0, vol=0, longest=0, longestSku="", heavy=0, bad=0;
+  for (const ln of state.lines){
+    for (const [c,q] of childrenOf(ln.sku)){
+      const b = box(c), n = q*ln.qty;
+      rows.push({ line:ln, b, qty:n });
+      if (!b.valid){ bad += n; continue; }
+      count += n; weight += b.wt*n; vol += b.L*b.W*b.H*n;
+      const mx = Math.max(b.L,b.W,b.H); if (mx>longest){longest=mx;longestSku=c;}
+      if (b.wt > VEHICLE_CONFIG.heavyBoxLb) heavy += n;
+      for (let i=0;i<Math.ceil(n);i++) boxes.push({ id:`${ln.id}:${c}:${i}`, ...b });
+    }
+  }
+  return { boxes, rows, count, weight, vol, longest, longestSku, heavy, bad };
+}
+function recommend(t){
+  const C = VEHICLE_CONFIG, out = { rec:null, ruled:[] };
+  if (!t.count) return out;
+  for (const v of C.vehicles){
+    const why = checkVehicle(v, t);
+    if (!why){ out.rec = v; return out; }
+    out.ruled.push(`${v.name} ruled out: ${why}`);
+  }
+  return out;
+}
+function checkVehicle(v, t){
+  const C = VEHICLE_CONFIG, U = state.d;
+  const maxLen = v.cargoLengthIn - C.lengthClearanceIn;
+  if (t.longest > maxLen) return `${fD(t.longest)} ${U} box exceeds ${fD(v.cargoLengthIn)} ${U} cargo length`;
+  const oMin = Math.min(v.openingWidthIn, v.openingHeightIn), oMax = Math.max(v.openingWidthIn, v.openingHeightIn);
+  for (const b of t.boxes){
+    const s = [b.L,b.W,b.H].sort((a,c)=>a-c);
+    if (s[0] > oMin || s[1] > oMax) return `${b.sku} (${fD(s[1])} x ${fD(s[0])} ${U} face) won't fit the ${fD(v.openingWidthIn)} x ${fD(v.openingHeightIn)} ${U} opening`;
+  }
+  if (t.weight > v.payloadLb*C.weightBuffer) return `${fW(t.weight)} ${state.w} exceeds the ${fW(v.payloadLb*C.weightBuffer)} ${state.w} safe payload`;
+  const cap = v.volumeCuFt*1728*C.volumeBuffer;
+  if (t.vol > cap) return `${fV(t.vol)} of boxes exceeds ${fV(cap)} of usable space`;
+  return null;
+}
+
+/* ---------- search: product list (Shopify-style) ---------- */
+const COLOR_CODES = { MBLK:"Matte Black", MAT:"Matte Black", BLK:"Black", WHT:"White", RED:"Red", BLU:"Blue", OLV:"Olive Green",
+  GRN:"Green", RAW:"Clear Coat", SS:"Stainless Steel", GRY:"Gray", NVY:"Navy", ORG:"Orange", TAN:"Tan", YLW:"Yellow", BARE:"Bare Steel" };
+const COLOR_PART = /^(metallic black|matte black|black|white|red|blue|olive( green)?|army green|green|(raw )?clear coat|raw|stainless steel|bare steel|gr[ae]y|navy|orange|tan|yellow|pink|purple)$/i;
+const COLOR_PREF = ["MBLK","MAT","BLK"];            // which color stands in for "any color" on the order line
+const skuColorCode = sku => { const t = sku.toUpperCase().split("-"); for (let i=t.length-1;i>0;i--) if (COLOR_CODES[t[i]]) return t[i]; return ""; };
+function colorName(sku){
+  const c = skuColorCode(sku); if (c) return COLOR_CODES[c];
+  const parts = String((ITEMS[sku]||[""])[0]).split(/\s+-\s+/); const p = parts.find(x => COLOR_PART.test(x.trim()));
+  return p ? p.trim() : "";
+}
+const REF = new Set(POPULAR_SKUS);                   // grows with SKUs from imported orders (memory only)
+// Colors count as the same box when sizes match to the inch and weights are within ~5 lb (exact values are still used per SKU).
+const boxSig = sku => childrenOf(sku).map(([c,q]) => { const b = box(c); return b.valid ? `${q}x${[b.L,b.W,b.H].map(Math.round).join("|")}|${Math.round(b.wt/5)}` : `${q}x${c}`; }).sort().join(",");
+const natural = (a,b) => a.localeCompare(b, undefined, { numeric:true, sensitivity:"base" });
+function isCoreSku(sku){                             // what shows in normal search (everything else is under "Include all SKUs")
+  if (/-C$|CLEARANCE|SPARE|\(\d+\)$/i.test(sku) || /CLEARANCE/i.test((ITEMS[sku]||[""])[0])) return false;
+  if (REF.has(sku) || CATALOG[sku]) return true;
+  if (BUNDLES[sku]){                                 // multi-box bundles only when curated; unnamed rack packages stay under "Include all SKUs"
+    if (FAMILY_RULES.some(r => r.test.test(sku.toUpperCase())) || PRODUCT_RULES.some(r => r.sku.test(sku.toUpperCase()))) return true;
+    return new Set(BUNDLES[sku].map(([c])=>c)).size===1 && !!CATALOG[BUNDLES[sku][0][0]];
+  }
+  return false;
+}
+function genericPlace(sku){                          // title + option label from the catalog display name
+  let name = CATALOG[sku] ? CATALOG[sku][2] : (ITEMS[sku]||[sku])[0];
+  let parts = name.split(/\s+-\s+/);
+  if (parts.length===1 && name.includes(", ")){ const i = name.indexOf(", "); parts = [name.slice(0,i), ...name.slice(i+2).split(/,\s*/)]; }
+  let title = parts[0].trim(), pre = [];
+  const m = title.match(/^(.*?)\s+(Pair|Set of \d+|Single)$/i); if (m){ title = m[1]; pre.push(m[2][0].toUpperCase()+m[2].slice(1)); }
+  const opts = parts.slice(1).map(p=>p.trim()).filter(p => p && !COLOR_PART.test(p) && !/^clearance$/i.test(p));
+  return { title, label: [...pre, ...opts].join(" / ") };
+}
+function placeSku(sku){
+  const U = sku.toUpperCase(), name = ITEMS[sku] ? ITEMS[sku][0] : BUNDLES[sku] ? (ITEMS[BUNDLES[sku][0][0]]||[""])[0] : "";
+  for (const r of PRODUCT_RULES){ const m = U.match(r.sku); if (m) return { title:r.title, label:r.label(m, name, U), curated:true }; }
+  const fr = FAMILY_RULES.find(r => r.test.test(U));
+  if (fr){ const v = VARIANT.get(sku); let title = fr.name;
+    if (fr.key==="CABLE2"){ const m = U.match(/-DUAL-([46])-/); title += m ? ` (${m[1]}-Post)` : ""; }
+    return { title, label: v ? v.label : sku, curated:true }; }
+  if (CATALOG[sku] || !BUNDLES[sku]) return { ...genericPlace(sku), curated:false };
+  const v = VARIANT.get(sku); return { title: v ? v.fam.name : sku, label: v ? v.label : "", curated:false };
+}
+const OPTS = new Map();                              // option id → option
+const PRODUCTS = (function(){
+  const byTitle = new Map(), placed = new Map();
+  const core = [...new Set([...Object.keys(ITEMS), ...Object.keys(BUNDLES)])].filter(isCoreSku);
+  const order = [...core.filter(s => !BUNDLES[s]), ...core.filter(s => BUNDLES[s])];     // single boxes first
+  for (const sku of order){
+    let pl = placeSku(sku);
+    const k = BUNDLES[sku] && !pl.curated && new Set(BUNDLES[sku].map(([c])=>c)).size===1 ? BUNDLES[sku][0] : null;
+    if (k && placed.has(k[0])){ const c = placed.get(k[0]); pl = { title:c.title, label:`${c.label||"Standard"} × ${k[1]}`, curated:c.curated }; }
+    placed.set(sku, pl);
+    const key = norm(pl.title);
+    if (!byTitle.has(key)) byTitle.set(key, { title:pl.title, curated:false, entries:[] });
+    const p = byTitle.get(key); p.curated = p.curated || pl.curated;
+    p.entries.push({ sku, label: pl.label || "Standard", sig: boxSig(sku), color: colorName(sku) });
+  }
+  const out = [];
+  for (const p of byTitle.values()){
+    const byLabel = new Map();
+    for (const e of p.entries){ if (!byLabel.has(e.label)) byLabel.set(e.label, []); byLabel.get(e.label).push(e); }
+    const opts = [];
+    for (const [label, es] of byLabel){
+      const bySig = new Map(); for (const e of es){ if (!bySig.has(e.sig)) bySig.set(e.sig, []); bySig.get(e.sig).push(e); }
+      for (const grp of bySig.values()){
+        grp.sort((a,b) => natural(a.sku,b.sku));
+        const pref = e => { const i = COLOR_PREF.indexOf(skuColorCode(e.sku)); return i<0 ? 9 : i; };
+        const rep = grp.find(e => REF.has(e.sku)) || [...grp].sort((a,b) => pref(a)-pref(b))[0];
+        const colors = [...new Set(grp.map(e => e.color).filter(Boolean))];
+        const lab = bySig.size>1 && colors.length ? `${label} / ${colors.length>2 ? colors.slice(0,2).join(", ")+` +${colors.length-2}` : colors.join(", ")}` : label;
+        const o = { id:"p:"+rep.sku, sku:rep.sku, alts:[rep, ...grp.filter(e=>e!==rep)].map(e=>e.sku), label:lab, colors:colors.length,
+          boxes:childrenOf(rep.sku).length, bad:childrenOf(rep.sku).some(([c]) => !box(c).valid) };
+        o.hay = norm(lab)+" "+o.alts.map(s => norm(s)+" "+norm((ITEMS[s]||[""])[0])+" "+norm((CATALOG[s]||[])[2])).join(" ");
+        OPTS.set(o.id, o); opts.push(o);
+      }
+    }
+    opts.sort((a,b) => natural(a.label, b.label));
+    const cat = majority(p.entries.map(e => catOf(e.sku)));
+    const fam = majority(p.entries.map(e => (CATALOG[e.sku]||[])[1]));
+    out.push({ title:p.title, curated:p.curated, cat, group:fam, opts, key:norm(p.title), tHay:norm(p.title), hay:norm(p.title)+" "+norm(cat)+" "+norm(fam) });
+  }
+  return out;
+})();
+const PRODUCT_OF = new Map(); PRODUCTS.forEach(p => p.opts.forEach(o => o.alts.forEach(s => PRODUCT_OF.set(s, { p, o }))));
+const refCount = p => p.opts.filter(o => o.alts.some(s => REF.has(s))).length;
+const isRef = o => o.alts.some(s => REF.has(s));
+
+const CATEGORIES = Object.entries(PRODUCTS.reduce((a,p) => { if (p.cat) a[p.cat] = (a[p.cat]||0) + p.opts.length + refCount(p)*20; return a; }, {}))
+  .sort((a,b) => b[1]-a[1]).map(([c]) => c);
+function search(q, cat, all){
+  const raw = q.trim(), toks = raw.split(/\s+/).map(norm).filter(Boolean);
+  const exact = SKU_INDEX.get(raw.toUpperCase());
+  if (!toks.length){                                 // browsing a category: most-ordered products first
+    if (!cat) return [];
+    return PRODUCTS.filter(p => p.cat===cat).sort((a,b) => refCount(b)-refCount(a) || b.curated-a.curated || b.opts.length-a.opts.length || natural(a.title,b.title))
+      .slice(0,30).map(p => ({ key:p.key, title:p.title, cat:p.cat, group:p.group, opts:p.opts }));
+  }
+  const res = [];
+  for (const p of PRODUCTS){
+    if (cat && p.cat!==cat) continue;
+    const tHit = toks.every(t => p.tHay.includes(t)), pHit = tHit || toks.every(t => p.hay.includes(t));
+    let opts = pHit ? p.opts : p.opts.filter(o => toks.every(t => p.hay.includes(t) || o.hay.includes(t)));
+    if (!opts.length) continue;
+    let score = tHit ? 200 : pHit ? 120 : 40;
+    if (p.tHay.startsWith(toks[0])) score += 60;
+    if (p.curated) score += 80;
+    if (p.opts.every(o => /^\d/.test(o.sku))) score -= 150;   // service parts after products
+    score += Math.min(90, refCount(p)*30);
+    if (exact && opts.some(o => o.alts.includes(exact))){ score += 2000; opts = [...opts].sort((a,b) => b.alts.includes(exact)-a.alts.includes(exact)); }
+    res.push({ key:p.key, title:p.title, cat:p.cat, group:p.group, opts, score });
+  }
+  res.sort((a,b) => b.score-a.score || natural(a.title,b.title));
+  if (all || !res.length || (exact && !PRODUCT_OF.has(exact))){   // older / parts SKUs, from the full NetSuite list
+    const seen = new Set(res.flatMap(r => r.opts.flatMap(o => o.alts)));
+    for (const r of archiveSearch(toks, exact, cat)){
+      const opts = r.vs.filter(v => !seen.has(v.sku)).map(v => {
+        const id = "a:"+v.sku; if (!OPTS.has(id)) OPTS.set(id, { id, sku:v.sku, alts:[v.sku], label:v.label, colors:0, boxes:v.boxes, bad:v.bad, archive:true });
+        return OPTS.get(id);
+      });
+      if (opts.length) res.push({ key:"a:"+r.f.key, title:r.f.name, cat:r.f.cat, group:"", opts, archive:true, score:r.score });
+    }
+  }
+  return res.slice(0, all ? 40 : 30);
+}
+function archiveSearch(toks, exact, cat){
+  const res = [];
+  for (const f of FAMILIES){
+    if (cat && f.cat!==cat) continue;
+    const famHit = toks.every(t => f.hay.includes(t));
+    const vs = famHit ? f.variants : f.variants.filter(v => toks.every(t => f.hay.includes(t) || v.hay.includes(t)));
+    if (!vs.length) continue;
+    let score = (famHit ? 100 : 10) + (exact && vs.some(v=>v.sku===exact) ? 3000 : 0) - (/^\d/.test(f.key) ? 20 : 0);
+    res.push({ f, vs, score });
+  }
+  return res.sort((a,b) => b.score-a.score || natural(a.f.name,b.f.name)).slice(0,20);
+}
+const expanded = new Set();
+function renderResults(){
+  const q = $("#q").value, el = $("#results");
+  if (!q.trim() && !state.cat){ el.innerHTML=""; return; }
+  const res = search(q, state.cat, state.all);
+  if (!res.length){ el.innerHTML = `<div class="empty">No products match “${esc(q)}”${state.cat?` in ${esc(state.cat)}`:""}. Try a shorter name, a SKU, or another category.</div>`; return; }
+  let archHdr = false;
+  el.innerHTML = res.map(r => {
+    const lim = expanded.has(r.key) ? r.opts.length : 12;
+    const init = r.title.replace(/[^A-Za-z0-9 ]/g,"").split(/\s+/).slice(0,2).map(w=>w[0]||"").join("").toUpperCase();
+    const hdr = r.archive && !archHdr ? (archHdr = true, `<div class="arch-h">Other SKUs (parts, older and discontinued items)</div>`) : "";
+    return hdr + `<div class="fam"><div class="fam-h"><div class="thumb">${esc(init)}</div><div><div class="nm">${esc(r.title)}</div><div class="ct">${r.opts.length} ${r.opts.length===1?"option":"options"}${r.group?` · ${esc(r.group)}`:""}</div></div>${r.cat?`<span class="chip cat">${esc(r.cat)}</span>`:""}</div>`+
+      r.opts.slice(0,lim).map(o => `<label class="var"><input type="checkbox" data-opt="${esc(o.id)}" ${state.sel.has(o.id)?"checked":""}><span class="lb">${esc(o.label)}${isRef(o)?` <span class="pop">Popular</span>`:""}<br><span class="sku">${esc(o.sku)}${o.alts.length>1?` · ${o.alts.length} colors, same box`:""}</span></span>${o.bad?`<span class="chip flag">Verify dims</span>`:""}<span class="chip">${o.boxes} ${o.boxes===1?"box":"boxes"}</span></label>`).join("")+
+      (r.opts.length>lim ? `<div class="more"><button data-more="${esc(r.key)}">Show all ${r.opts.length} options</button></div>` : "") + `</div>`;
+  }).join("");
+}
+function renderSel(){
+  const n = state.sel.size;
+  $("#selCount").textContent = n ? `${n} selected` : "No products selected";
+  $("#addSel").disabled = !n; $("#selClear").hidden = !n;
+  $("#addSel").textContent = n ? `Add ${n}` : "Add";
+}
+
+/* ---------- cart ---------- */
+function addLine(sku, qty=1, group=null, alts=null){
+  const ex = state.lines.find(l => l.sku===sku && l.group===group);
+  if (ex) ex.qty += qty; else state.lines.push({ id:state.nextId++, sku, qty, group, alts: alts && alts.length>1 ? alts : null });
+}
+function colorPicker(ln){                           // same box size & weight, so the color only changes the SKU on the list
+  if (!ln.alts) return "";
+  return `<select class="alt" data-alt="${ln.id}" aria-label="Color">${ln.alts.map(s => `<option value="${esc(s)}" ${s===ln.sku?"selected":""}>${esc(colorName(s) || s)} · ${esc(s)}</option>`).join("")}</select>`;
+}
+function chipsFor(b){
+  if (!b.valid) return `<span class="chip flag">Dimensions unavailable — verify manually</span>`;
+  return b.wt > VEHICLE_CONFIG.heavyBoxLb ? `<span class="chip heavy">Heavy — staff loading assist</span>` : "";
+}
+function renderCart(){
+  const el = $("#cart");
+  $("#lineCount").textContent = `${state.lines.length} ${state.lines.length===1?"item":"items"}`;
+  if (!state.lines.length){ el.innerHTML = `<div class="empty">Your order is empty. Search for a product, import an order, or <button class="linkbtn" id="demoOrder">load a sample order</button>.</div>`; return; }
+  const U=state.d, W=state.w;
+  const lineHtml = ln => {
+    const kids = childrenOf(ln.sku), isB = !!BUNDLES[ln.sku];
+    const name = isB ? displayName(ln.sku) : box(ln.sku).name;
+    let body;
+    if (isB){
+      const open = !state.open.has(ln.id) ? "open" : "";
+      body = `<details class="kids" data-id="${ln.id}" ${open}><summary>Bundle with ${kids.length} ${kids.length===1?"item":"items"}</summary><div class="kid-list">`+
+        kids.map(([c,q]) => { const b=box(c); return `<div class="kid"><div class="k-nm">${esc(b.name)}</div><div class="k-q">× ${q*ln.qty}</div><div class="k-meta"><span class="mono">${esc(c)}</span>${copyMeta(b)}${chipsFor(b)}</div></div>`; }).join("")+`</div></details>`;
+    } else {
+      const b = box(ln.sku);
+      body = `<div class="single-meta">${copyMeta(b)}${chipsFor(b)}</div>`;
+    }
+    return `<div class="line"><div class="line-top"><div class="info"><div class="nm">${esc(name)}</div><div class="sku">${esc(ln.sku)}</div>${colorPicker(ln)}</div>
+      <div class="qty"><button data-dec="${ln.id}" aria-label="Decrease">−</button><input type="number" min="1" step="1" value="${ln.qty}" data-qty="${ln.id}" aria-label="Quantity"><button data-inc="${ln.id}" aria-label="Increase">+</button></div>
+      <button class="x" data-rm="${ln.id}" aria-label="Remove">×</button></div>${body}</div>`;
+  };
+  let html=""; const done = new Set();
+  for (const ln of state.lines){                     // lines sharing a "Part of" name stay together
+    if (!ln.group){ html += lineHtml(ln); continue; }
+    if (done.has(ln.group)) continue; done.add(ln.group);
+    html += `<div class="group"><div class="group-h">Part of: ${esc(ln.group)}</div>${state.lines.filter(l=>l.group===ln.group).map(lineHtml).join("")}</div>`;
+  }
+  el.innerHTML = html;
+}
+
+/* ---------- totals ---------- */
+function renderTotals(t){
+  const U=state.d, W=state.w;
+  $("#stats").innerHTML = [
+    [t.count, "Total boxes"], [fW(t.weight)+" "+W, "Total weight"], [fV(t.vol), "Total volume"],
+    [t.longest ? fD(t.longest)+" "+U : "—", "Longest box"], [t.heavy, "Heavy boxes"]
+  ].map(([v,l],i)=>`<div class="stat${i===4&&t.heavy?" hv":""}"><div class="v">${v}</div><div class="l">${l}</div></div>`).join("");
+  $("#totWarn").innerHTML = t.bad ? `<div class="warnbox"><b>${t.bad} ${t.bad===1?"box has":"boxes have"} no dimensions or weight on file</b> and ${t.bad===1?"is":"are"} not included in totals or the vehicle check. Verify manually before loading.</div>` : "";
+}
+
+/* ---------- truck visual ---------- */
+const IX=112, IY=78, IW=376, IH=280;                 // cargo opening in SVG units
+const SHADES = ["#c9a26b","#bf955c","#d2ad78","#b88c55","#c49a63","#d8b684","#b3854d","#cda56f"];
+const hash = s => { let h=0; for (const ch of s) h=(h*31+ch.charCodeAt(0))|0; return Math.abs(h); };
+function truckShell(){
+  return `
+  <defs>
+    <clipPath id="cargoClip"><rect x="${IX}" y="${IY}" width="${IW}" height="${IH}"/></clipPath>
+    <linearGradient id="intG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e9eaec"/><stop offset="1" stop-color="#d5d7da"/></linearGradient>
+    <pattern id="ribs" width="8" height="10" patternUnits="userSpaceOnUse"><rect width="8" height="10" fill="#f3f3f4"/><rect y="8" width="8" height="2" fill="#d9dadd"/></pattern>
+  </defs>
+  <ellipse cx="300" cy="448" rx="250" ry="10" fill="#000" opacity=".08"/>
+  <rect x="84" y="30" width="432" height="356" rx="10" fill="#f7f7f8" stroke="#0b0b0c" stroke-width="4"/>
+  <rect x="${IX}" y="${IY}" width="${IW}" height="${IH}" fill="url(#intG)"/>
+  <rect x="${IX+46}" y="${IY+34}" width="${IW-92}" height="${IH-70}" fill="#cfd1d5" opacity=".8"/>
+  <g stroke="#b9bcc1" stroke-width="1.5" fill="none">
+    <path d="M${IX} ${IY} L${IX+46} ${IY+34} M${IX+IW} ${IY} L${IX+IW-46} ${IY+34} M${IX} ${IY+IH} L${IX+46} ${IY+IH-36} M${IX+IW} ${IY+IH} L${IX+IW-46} ${IY+IH-36}"/>
+    <path d="M${IX+46} ${IY+120} H${IX+IW-46} M${IX+46} ${IY+180} H${IX+IW-46}" stroke-dasharray="3 5" opacity=".6"/>
+  </g>
+  <rect x="${IX-4}" y="40" width="${IW+8}" height="${IY-40}" fill="url(#ribs)" stroke="#0b0b0c" stroke-width="2"/>
+  <rect x="${IX+IW/2-14}" y="${IY-8}" width="28" height="6" rx="3" fill="#0b0b0c"/>
+  <g id="boxes" clip-path="url(#cargoClip)"></g>
+  <rect x="${IX}" y="${IY}" width="${IW}" height="${IH}" fill="none" stroke="#0b0b0c" stroke-width="3"/>
+  <rect x="70" y="386" width="460" height="22" rx="4" fill="#1b1c1f"/>
+  <rect x="96" y="364" width="18" height="14" rx="2" fill="#d62828"/><rect x="486" y="364" width="18" height="14" rx="2" fill="#d62828"/>
+  <rect x="96" y="346" width="18" height="12" rx="2" fill="#f4b23f"/><rect x="486" y="346" width="18" height="12" rx="2" fill="#f4b23f"/>
+  <rect x="270" y="392" width="60" height="12" rx="2" fill="#fff" opacity=".9"/>
+  <path d="M232 408 L368 408 L392 452 L208 452 Z" fill="#9ea2a8" stroke="#0b0b0c" stroke-width="2.5"/>
+  <g stroke="#7d8187" stroke-width="2">${[418,428,438].map(y=>`<line x1="${232-(y-408)*0.55}" y1="${y}" x2="${368+(y-408)*0.55}" y2="${y}"/>`).join("")}</g>
+  <rect x="102" y="408" width="70" height="40" rx="8" fill="#0b0b0c"/><rect x="428" y="408" width="70" height="40" rx="8" fill="#0b0b0c"/>
+  <line id="fillLine" x1="${IX}" x2="${IX+IW}" y1="0" y2="0" stroke="var(--accent)" stroke-width="2" stroke-dasharray="6 5" opacity="0"/>
+  <text id="emptyTxt" x="300" y="${IY+IH/2+6}" text-anchor="middle" font-size="15" font-weight="700" fill="#8b8e94">Add products to start loading</text>`;
+}
+function layout(boxes, capIn3){
+  const A = IW*IH, sky = new Float32Array(IW), out=[];
+  const MAX = 400, list = boxes.slice(0, MAX);
+  const items = list.map(b => {
+    const s=[b.L,b.W,b.H].sort((a,c)=>c-a);
+    const area = Math.max(18, (b.L*b.W*b.H)/capIn3*A);
+    const k = Math.sqrt(area/(s[0]*s[2]));
+    let w = s[0]*k, h = s[2]*k;
+    if (w>IW){ w=IW; h=area/IW; } if (h>IH){ h=IH; w=Math.min(IW,area/IH); }
+    return { b, w:Math.max(3,w), h:Math.max(3,h), area };
+  }).sort((a,b)=>b.area-a.area || a.b.id.localeCompare(b.b.id));
+  for (const it of items){
+    const w = Math.min(IW, Math.round(it.w)); let bx=0, by=Infinity;
+    for (let x=0; x<=IW-w; x+=2){ let m=0; for (let j=x;j<x+w;j++) if (sky[j]>m) m=sky[j]; if (m<by-0.01){ by=m; bx=x; } }
+    for (let j=bx;j<bx+w;j++) sky[j]=by+it.h;
+    out.push({ b:it.b, x:IX+bx, y:IY+IH-by-it.h, w, h:it.h });
+  }
+  return { placed:out, hidden: boxes.length-list.length };
+}
+let truckInit=false;
+function renderTruck(t, rec){
+  const svg = $("#truck");
+  if (!truckInit){ svg.innerHTML = truckShell(); truckInit=true; }
+  const g = svg.querySelector("#boxes");
+  const veh = rec.rec || VEHICLE_CONFIG.vehicles[VEHICLE_CONFIG.vehicles.length-1];
+  const cap = veh.volumeCuFt*1728;
+  const { placed } = layout(t.boxes, cap);
+  const seen = new Set();
+  for (const p of placed){
+    seen.add(p.b.id);
+    let el = g.querySelector(`[data-b="${CSS.escape(p.b.id)}"]`);
+    const heavy = p.b.wt > VEHICLE_CONFIG.heavyBoxLb, fill = SHADES[hash(p.b.sku)%SHADES.length];
+    const inner = `<rect width="${p.w.toFixed(1)}" height="${p.h.toFixed(1)}" rx="1.5" fill="${fill}" stroke="#7a5a30" stroke-width="${p.w>8?1:.5}"/>`+
+      (p.w>22&&p.h>10 ? `<rect x="${(p.w/2-Math.min(6,p.w/8)).toFixed(1)}" width="${Math.min(12,p.w/4).toFixed(1)}" height="${p.h.toFixed(1)}" fill="#e6cfa5" opacity=".55"/>` : "")+
+      (heavy && p.w>14&&p.h>12 ? `<path d="M0 0 H${Math.min(18,p.w*.4).toFixed(1)} L0 ${Math.min(18,p.h*.5).toFixed(1)} Z" fill="#0b0b0c"/>` : "")+
+      (p.w>70&&p.h>26 ? `<text x="${(p.w/2).toFixed(1)}" y="${(p.h/2+4).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="700" fill="#5b4122">${esc(p.b.sku.length>22?p.b.sku.slice(0,21)+"…":p.b.sku)}</text>` : "")+
+      `<title>${esc(p.b.sku)} — ${esc(p.b.name)}</title>`;
+    if (!el){
+      el = document.createElementNS("http://www.w3.org/2000/svg","g");
+      el.setAttribute("class","bx"); el.dataset.b = p.b.id;
+      el.style.transform = `translate(${p.x}px, ${-p.h-40}px)`; el.style.opacity="0";
+      g.appendChild(el); el.getBoundingClientRect();
+    }
+    if (el._k !== inner){ el.innerHTML = inner; el._k = inner; }
+    requestAnimationFrame(()=>{ el.style.transform = `translate(${p.x}px, ${p.y}px)`; el.style.opacity="1"; });
+  }
+  g.querySelectorAll(".bx").forEach(el => { if (!seen.has(el.dataset.b)) el.remove(); });
+  svg.querySelector("#emptyTxt").style.display = t.count ? "none" : "";
+  // safe-load line (volume buffer) as a reference height
+  const fl = svg.querySelector("#fillLine"); const yy = IY + IH*(1-VEHICLE_CONFIG.volumeBuffer);
+  fl.setAttribute("y1",yy); fl.setAttribute("y2",yy); fl.setAttribute("opacity", t.count?".7":"0");
+  const pct = t.count ? t.vol/cap*100 : 0;
+  $("#fillLabel").textContent = t.count ? `≈ ${Math.round(pct)}% of ${veh.name} space · dashed line = safe fill` : "";
+}
+const ICONS = {
+  car:`<svg viewBox="0 0 64 36" fill="currentColor"><path d="M6 24c0-3 2-5 5-6l7-7c2-2 4-3 7-3h13c3 0 5 1 7 3l6 6 6 1c2 1 3 3 3 5v4H6z"/><circle cx="18" cy="28" r="5" fill="#0b0b0c" stroke="currentColor" stroke-width="3"/><circle cx="48" cy="28" r="5" fill="#0b0b0c" stroke="currentColor" stroke-width="3"/></svg>`,
+  suv:`<svg viewBox="0 0 64 36" fill="currentColor"><path d="M4 26V14c0-2 1-4 3-5l4-3h32c2 0 3 1 4 2l6 7 5 1c2 0 3 2 3 4v6z"/><circle cx="17" cy="28" r="5" fill="#0b0b0c" stroke="currentColor" stroke-width="3"/><circle cx="48" cy="28" r="5" fill="#0b0b0c" stroke="currentColor" stroke-width="3"/></svg>`,
+  pickup:`<svg viewBox="0 0 64 36" fill="currentColor"><path d="M2 26v-9h26V8h14c2 0 3 1 4 2l6 7 7 1c1 0 2 2 2 3v5z"/><circle cx="15" cy="28" r="5" fill="#0b0b0c" stroke="currentColor" stroke-width="3"/><circle cx="49" cy="28" r="5" fill="#0b0b0c" stroke="currentColor" stroke-width="3"/></svg>`,
+  van:`<svg viewBox="0 0 64 36" fill="currentColor"><path d="M2 26V8c0-2 2-4 4-4h36c3 0 5 1 7 4l6 9 5 2c1 1 2 2 2 3v4z"/><circle cx="15" cy="28" r="5" fill="#0b0b0c" stroke="currentColor" stroke-width="3"/><circle cx="49" cy="28" r="5" fill="#0b0b0c" stroke="currentColor" stroke-width="3"/></svg>`,
+  box:`<svg viewBox="0 0 64 36" fill="currentColor"><rect x="2" y="2" width="40" height="24" rx="2"/><path d="M44 10h8c2 0 3 1 4 2l5 7c1 1 1 2 1 3v4H44z"/><circle cx="14" cy="28" r="5" fill="#0b0b0c" stroke="currentColor" stroke-width="3"/><circle cx="52" cy="28" r="5" fill="#0b0b0c" stroke="currentColor" stroke-width="3"/></svg>`,
+  trailer:`<svg viewBox="0 0 64 36" fill="currentColor"><rect x="2" y="8" width="46" height="16" rx="2"/><path d="M48 20h14v3H48z"/><circle cx="24" cy="28" r="5" fill="#0b0b0c" stroke="currentColor" stroke-width="3"/></svg>`,
+};
+function barColor(p){ return p<60 ? "var(--ok)" : p<=85 ? "var(--warn)" : "var(--bad)"; }
+function renderRec(t, r){
+  const box$ = $("#recBox");
+  if (!t.count){
+    box$.innerHTML = `<div class="rec none"><div class="ic">${ICONS.car}</div><div><div class="t1">Vehicle recommended</div><div class="t2">—</div></div></div>`;
+    $("#bars").innerHTML=""; $("#ruled").innerHTML=""; $("#heavyBox").innerHTML=""; return;
+  }
+  const v = r.rec, F = VEHICLE_CONFIG.fallback;
+  box$.innerHTML = v
+    ? `<div class="rec"><div class="ic">${ICONS[v.id]||ICONS.box}</div><div><div class="t1">Vehicle recommended</div><div class="t2">${esc(v.name)}</div><div style="font-size:12px;color:#a9abb1">${esc(v.detail)}</div></div></div>`
+    : `<div class="rec over"><div class="ic">${ICONS.trailer}</div><div><div class="t1">Vehicle recommended</div><div class="t2">${esc(F.name)}</div><div style="font-size:12.5px;font-weight:600">${esc(F.message)}</div></div></div>`;
+  const ref = v || VEHICLE_CONFIG.vehicles[VEHICLE_CONFIG.vehicles.length-1];
+  const vp = t.vol/(ref.volumeCuFt*1728)*100, wp = t.weight/ref.payloadLb*100;
+  $("#bars").innerHTML = [["Volume",vp,`${fV(t.vol)} of ${fV(ref.volumeCuFt*1728)}`],["Weight",wp,`${fW(t.weight)} of ${fW(ref.payloadLb)} ${state.w}`]].map(([l,p,d])=>
+    `<div class="bar"><div class="bl"><span>${l} · ${Math.round(p)}%</span><span class="muted" style="font-weight:600">${d}</span></div><div class="bt"><div class="bf" style="width:${Math.min(100,p)}%;background:${barColor(p)}"></div></div></div>`).join("");
+  $("#heavyBox").innerHTML = t.heavy ? `<div class="heavynote"><span class="chip heavy">${t.heavy}</span> heavy ${t.heavy===1?"box":"boxes"} over ${fW(VEHICLE_CONFIG.heavyBoxLb)} ${state.w} — staff loading assist</div>` : "";
+  $("#ruled").innerHTML = r.ruled.map(s=>`<li>${esc(s)}</li>`).join("") + (t.bad ? `<li style="color:var(--flag-ink)">${t.bad} unverified ${t.bad===1?"box":"boxes"} not included — size up if unsure.</li>` : "");
+}
+
+/* ---------- packing list ---------- */
+function packLines(t){
+  const U=state.d, W=state.w, head=`SKU | Product | Qty | L x W x H (${U}) | Weight per box (${W})`;
+  const fmt = (b,q) => b.valid ? `${b.sku} | ${b.name} | ${q} | ${fD(b.L)} x ${fD(b.W)} x ${fD(b.H)} | ${fW(b.wt)}` : `${b.sku} | ${b.name} | ${q} | Dimensions unavailable — verify manually | —`;
+  const out = [];
+  if (state.view==="grouped"){
+    for (const ln of state.lines){
+      const isB = !!BUNDLES[ln.sku];
+      out.push({ type:"group", text:`${isB?displayName(ln.sku):box(ln.sku).name} (${ln.sku}) x ${ln.qty}${ln.group?` — Part of: ${ln.group}`:""}` });
+      for (const [c,q] of childrenOf(ln.sku)){ const b=box(c); out.push({ type:"box", b, q:q*ln.qty, text:"  "+fmt(b,q*ln.qty) }); }
+    }
+  } else {
+    const agg = new Map();
+    for (const r of t.rows){ const a = agg.get(r.b.sku); if (a) a.q += r.qty; else agg.set(r.b.sku, { b:r.b, q:r.qty }); }
+    for (const {b,q} of agg.values()) out.push({ type:"box", b, q, text:fmt(b,q) });
+  }
+  const tot = `Total boxes: ${t.count} | Total weight: ${fW(t.weight)} ${W}`;
+  return { head, out, tot };
+}
+function packText(t){
+  const { head, out, tot } = packLines(t);
+  const L = [head, ...out.map(o=>o.text)];
+  if (t.bad) L.push(`Not included in totals (verify manually): ${t.bad} ${t.bad===1?"box":"boxes"}`);
+  L.push(tot);
+  return L.join("\n");
+}
+function renderPreview(t){ $("#plPreview").textContent = state.lines.length ? packText(t) : "Add products to build a packing list."; }
+function buildPrint(t, r){
+  const { out, tot } = packLines(t), U=state.d, W=state.w;
+  const today = new Date().toLocaleDateString(undefined,{year:"numeric",month:"long",day:"numeric"});
+  const rows = out.map(o => o.type==="group" ? `<tr class="gp"><td colspan="5">${esc(o.text)}</td></tr>`
+    : `<tr><td class="mono">${esc(o.b.sku)}</td><td>${esc(o.b.name)}</td><td class="n">${o.q}</td><td>${o.b.valid?`${fD(o.b.L)} x ${fD(o.b.W)} x ${fD(o.b.H)}`:"Dimensions unavailable — verify manually"}</td><td class="n">${o.b.valid?fW(o.b.wt):"—"}</td></tr>`).join("");
+  const veh = r.rec ? r.rec.name : `${VEHICLE_CONFIG.fallback.name} — ${VEHICLE_CONFIG.fallback.message}`;
+  $("#printDoc").innerHTML = `<div class="ph"><div><img src="${LOGO_BLACK}" alt="PackPlanner"><h1>Packing List</h1></div><div style="text-align:right">${state.orderNo?`<div><b>Order #</b> ${esc(state.orderNo)}</div>`:""}<div>${esc(today)}</div></div></div>
+    <table><thead><tr><th>SKU</th><th>Product</th><th class="n">Qty</th><th>L x W x H (${U})</th><th class="n">Weight per box (${W})</th></tr></thead><tbody>${rows}</tbody></table>
+    ${t.bad?`<p>${t.bad} ${t.bad===1?"box":"boxes"} without dimensions on file are not included in totals.</p>`:""}
+    <div class="tot">${esc(tot)}</div>
+    <div class="veh"><b>Vehicle recommended:</b> ${esc(veh)}${t.heavy?`<br><b>Heavy boxes:</b> ${t.heavy} over ${fW(VEHICLE_CONFIG.heavyBoxLb)} ${W} — staff loading assist`:""}</div>`;
+}
+
+/* ---------- paste parser ---------- */
+const OF_RE = /^\s*(\d+)\s+of\s+(\d+)\s*$/i;
+// Also forgives common photo-reading mix-ups (O/0, I/1) when the exact SKU isn't found.
+const lookupSku = tok => { const k = String(tok).replace(/[,;:.]$/,"").toUpperCase(); return SKU_INDEX.get(k) || SKU_INDEX.get(k.replace(/(?<=\d)O|O(?=\d)/g,"0")) || SKU_INDEX.get(k.replace(/(?<=\d)[IL]|[IL](?=\d)/g,"1")); };
+const skuLike = s => /^[A-Z0-9][A-Z0-9\-_.()]{3,}$/i.test(s) && /\d/.test(s) && /[A-Z]/i.test(s) && !/^\d+\s*(lb|kg)s?$/i.test(s);
+// Sales orders and return authorizations (RMAs) share a layout: quantity, then SKU. Discount and return-shipping lines are skipped.
+const isRMA = text => /Return Authorization/i.test(text) || /#?RMA\d{4,}/.test(text);
+function isSalesOrder(text){ return isRMA(text) || /Quantity\s+Item\s+(Rate|Price)/i.test(text) || (/\bInvoice\b/i.test(text) && /#?SO\d{5,}/.test(text)); }
+const lineDocType = text => isRMA(text) ? "Return authorization" : "Sales order";
+function orderNumber(text){
+  const so = text.match(/#?((?:SO|RMA)\d{4,})/) || text.match(/(#D\d{4,})/), sh = text.match(/Shopify Reference Number[\s\S]{0,80}?\b(\d{6,})\b/i) || text.match(/\bOrder\s+#?(\d{6,})\b/i) || text.match(/\b(\d{8})-F\d+\b/);
+  return [so && so[1], sh && sh[1]].filter(Boolean);
+}
+// Sales order / invoice: each item line starts with the quantity, then the SKU.
+function parseSalesOrderLines(lines){
+  const found=[], skipped=[], missing=[];
+  for (const l of lines){
+    const m = l.match(/^(\d+(?:\.\d+)?)\s+(\S+)\s+(.*)$/); if (!m) continue;
+    const qty = parseFloat(m[1]), sku = lookupSku(m[2]);
+    const title = m[3].replace(/\s*\$[\d.,]+.*$/,"").trim();
+    if (sku) (qty===0 ? skipped : found).push({ sku, qty, part:null, title, on:true });
+    else if (skuLike(m[2]) && title && !/\bof\b/i.test(l)) (qty===0 ? skipped : missing).push({ sku:m[2], qty, title });
+  }
+  return { found, skipped, missing };
+}
+function parsePaste(text){
+  if (isSalesOrder(text)) return { ...parseSalesOrderLines(text.split(/\r?\n/).map(s=>s.trim()).filter(Boolean)), type:lineDocType(text), order:orderNumber(text) };
+  const lines = text.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+  const found=[], skipped=[], missing=[];
+  let block=[];
+  const flush = (qty) => {
+    const partL = block.find(l=>/^part of:/i.test(l));
+    const part = partL ? partL.replace(/^part of:\s*/i,"").trim() : null;
+    let sku=null;
+    for (const l of block){ for (const tok of l.split(/\s+/)){ const k = SKU_INDEX.get(tok.replace(/[,;]$/,"").toUpperCase()); if (k){ sku=k; break; } } if (sku) break; }
+    const title = (block[0]||"").replace(/^bundle\s+/i,"");
+    if (sku){ (qty===0 ? skipped : found).push({ sku, qty, part, title, on:true }); }
+    else {
+      const cand = [...block].reverse().find(l => /^[A-Z0-9][A-Z0-9\-_.]{3,}$/i.test(l) && /\d/.test(l) && /[A-Z]/i.test(l) && !/^\d+\s*(lb|kg)s?$/i.test(l));
+      (qty===0 ? skipped : missing).push({ sku:cand||"(no SKU)", qty, title });
+    }
+    block=[];
+  };
+  for (const l of lines){ const m = l.match(OF_RE); if (m) flush(parseInt(m[1],10)); else block.push(l); }
+  if (block.length){ // trailing lines without "X of Y" — still pick up any SKUs
+    for (const l of block) for (const tok of l.split(/\s+/)){ const k = SKU_INDEX.get(tok.toUpperCase()); if (k) found.push({ sku:k, qty:1, part:null, title:l, on:true }); }
+  }
+  return { found, skipped, missing, type:"Packing slip", order:orderNumber(text) };
+}
+
+/* ---------- file import (PDF via pdf.js, loaded only when a PDF is uploaded) ---------- */
+const PDFJS_URL = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+const PDFJS_WORKER = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+let pdfjsReady = null;
+function loadPdfJs(){
+  if (!pdfjsReady) pdfjsReady = new Promise((ok, fail) => {
+    const s = document.createElement("script"); s.src = PDFJS_URL;
+    s.onload = () => { window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER; ok(window.pdfjsLib); };
+    s.onerror = () => { pdfjsReady = null; fail(new Error("Couldn't load the PDF reader. Check your connection and try again.")); };
+    document.head.appendChild(s);
+  });
+  return pdfjsReady;
+}
+// Rebuild visual lines (with page + vertical position) from a PDF's text layer.
+async function pdfLines(buf){
+  const lib = await loadPdfJs(), doc = await lib.getDocument({ data:buf }).promise, out=[];
+  for (let p=1; p<=doc.numPages; p++){
+    const page = await doc.getPage(p), tc = await page.getTextContent(), rows=[];
+    for (const it of tc.items){
+      if (!it.str || !it.str.trim()) continue;
+      const x = it.transform[4], y = it.transform[5];
+      let row = rows.find(r => Math.abs(r.y - y) < 2.5);
+      if (!row){ row = { y, parts:[] }; rows.push(row); }
+      row.parts.push({ x, w:it.width || 0, s:it.str });
+    }
+    rows.sort((a,b) => b.y - a.y);
+    for (const r of rows){                          // pieces that touch are one word ("PUB-SET-2" + ".0"); a gap means a space
+      const ps = r.parts.sort((a,b)=>a.x-b.x); let s = "";
+      ps.forEach((t,i) => { s += (i && t.x - (ps[i-1].x + ps[i-1].w) > 1 ? " " : "") + t.s; });
+      out.push({ page:p, y:r.y, text:s.replace(/\s+/g," ").trim() });
+    }
+  }
+  return out;
+}
+// Packing slip PDF: the "X of Y" quantity sits beside the item block, so match each quantity to the nearest SKU line.
+function parseSlipPdf(lines){
+  const found=[], skipped=[], missing=[], qtys=[], skus=[];
+  lines.forEach((l, i) => {
+    let t = l.text; const m = t.match(/(?:^|\s)(\d+)\s+of\s+(\d+)\s*$/i);
+    if (m){ qtys.push({ page:l.page, y:l.y, qty:parseInt(m[1],10) }); t = t.slice(0, m.index).trim(); }
+    if (t && !/\s/.test(t) && (lookupSku(t) || skuLike(t))) skus.push({ i, page:l.page, y:l.y, tok:t, sku:lookupSku(t), qty:null });
+  });
+  for (const q of qtys){
+    let best=null, d=Infinity;
+    for (const s of skus) if (s.page===q.page && Math.abs(s.y-q.y) < d){ d = Math.abs(s.y-q.y); best = s; }
+    if (best && d < 60) best.qty = (best.qty||0) + q.qty;
+  }
+  const gap = 18;                                   // max distance between lines of the same item
+  for (const s of skus){
+    if (s.qty==null) continue;
+    let part=null, title="";
+    for (let j=s.i+1; j<lines.length && lines[j].page===s.page && s.y-lines[j].y < gap*3; j++){
+      if (/^part of:/i.test(lines[j].text)){
+        part = lines[j].text.replace(/^part of:\s*/i,"").replace(/\s*\d+\s+of\s+\d+\s*$/i,"");
+        const nx = lines[j+1];
+        if (nx && nx.page===s.page && lines[j].y-nx.y < gap && !/^part of:|\bof\s+\d+$/i.test(nx.text) && !skus.some(k=>k.i===j+1)) part += " " + nx.text;
+        break;
+      }
+      if (skus.some(k => k.i===j)) break;
+    }
+    for (let j=s.i-1; j>=0 && lines[j].page===s.page && lines[j].y-s.y < gap*3; j--){ if (skus.some(k=>k.i===j) || /^(ITEMS|part of:)/i.test(lines[j].text)) break; title = lines[j].text + (title?" · "+title:""); }
+    title = title.replace(/^bundle\s+/i,"").replace(/\s*\d+\s+of\s+\d+\s*$/i,"");
+    if (s.sku) (s.qty===0 ? skipped : found).push({ sku:s.sku, qty:s.qty, part:part && part.trim(), title, on:true });
+    else (s.qty===0 ? skipped : missing).push({ sku:s.tok, qty:s.qty, title });
+  }
+  return { found, skipped, missing };
+}
+// Shopify draft orders and order pages: each top-level product shows its SKU, with "× qty" just below (draft)
+// or beside the product name (order page). Bundle parts are listed without SKUs, so bundles are expanded
+// from NetSuite's bundle list. Lines like "_parentSKU: ..." and gift properties are ignored.
+const isDraft = text => /#D\d{4,}|\bDrafts?\b|Bundle with \d+ items?|_parentSKU|\$[\d,]+\.\d{2}\s*[×x]\s*\d+/i.test(text);
+const SKU_SHAPE = /^[A-Z0-9]+(?:-[A-Z0-9()]+)+$/;
+function parseDraftLines(lines){
+  const found=[], skipped=[], missing=[], skus=[], qtys=[];
+  lines.forEach((l, i) => {
+    const t = l.text.trim();
+    if (/_parent_?SKU|_free_?gift|free.?gift|^_|^gift:/i.test(t)) return;          // line-item properties, not products
+    const q = t.match(/\$[\d,.]+\s*[×x]\s*(\d{1,3})\b/i) || t.match(/(?:^|\s)[×x]\s?(\d{1,3})(?=\s|$)/);
+    if (q){ qtys.push({ page:l.page, y:l.y, qty:parseInt(q[1],10) }); return; }
+    if (/^\$|bundle with|^part of:/i.test(t)) return;
+    const toks = t.split(/\s+/);
+    for (let k=toks.length-1; k>=0; k--){
+      const tok = toks[k].replace(/[,;:]$/,""), joined = k+1<toks.length ? tok + toks[k+1] : "";   // PDFs sometimes split "PUB-SET-2" ".0"
+      const sku = (joined && lookupSku(joined)) || lookupSku(tok);
+      // unknown SKUs are only reported when they end the line (product titles like "SR-7 Crossmembers" are not SKUs)
+      const unknown = !sku && k===toks.length-1 && SKU_SHAPE.test(tok) && /\d/.test(tok) && /[A-Z]/.test(tok);
+      if (sku || unknown){ skus.push({ i, page:l.page, y:l.y, tok, sku, title: k ? toks.slice(0,k).join(" ") : (lines[i-1]||{}).text || "" }); break; }
+    }
+  });
+  for (const s of skus){
+    let best=null, d=Infinity;
+    for (const q of qtys) if (q.page===s.page && Math.abs(q.y-s.y) < d){ d = Math.abs(q.y-s.y); best = q; }
+    const qty = best && d < 90 ? best.qty : 1;
+    if (s.sku) (qty===0 ? skipped : found).push({ sku:s.sku, qty, part:null, title:s.title, on:true });
+    else missing.push({ sku:s.tok, qty, title:s.title });
+  }
+  return { found, skipped, missing };
+}
+// Pick the right reader for the document's text (used for PDFs and photos).
+function parseDocLines(lines){
+  const text = lines.map(l=>l.text).join("\n");
+  if (isSalesOrder(text)) return { ...parseSalesOrderLines(lines.map(l=>l.text)), type:lineDocType(text), order:orderNumber(text) };
+  if (/\b\d+\s+of\s+\d+\b/i.test(text) && !isDraft(text)) return { ...parseSlipPdf(lines), type:"Packing slip", order:orderNumber(text) };
+  return { ...parseDraftLines(lines), type: /#D\d{4,}|Drafts?/i.test(text) ? "Draft order" : "Shopify order", order:orderNumber(text) };
+}
+// Photos and screenshots: read the text with Tesseract OCR (loaded only when an image is uploaded).
+const OCR_URL = "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js";
+let ocrReady = null;
+function loadOcr(){
+  if (!ocrReady) ocrReady = new Promise((ok, fail) => {
+    const s = document.createElement("script"); s.src = OCR_URL;
+    s.onload = () => ok(window.Tesseract);
+    s.onerror = () => { ocrReady = null; fail(new Error("Couldn't load the photo reader. Check your connection and try again.")); };
+    document.head.appendChild(s);
+  });
+  return ocrReady;
+}
+async function imageLines(file, onProgress){
+  const T = await loadOcr();
+  const { data } = await T.recognize(file, "eng", { logger: m => m.status==="recognizing text" && onProgress && onProgress(m.progress) });
+  return (data.lines || []).map(l => ({ page:1, y:-l.bbox.y0, text:l.text.replace(/\s+/g," ").trim() })).filter(l => l.text);
+}
+async function importFile(file, onProgress){
+  if (/\.pdf$/i.test(file.name) || file.type==="application/pdf"){
+    const lines = await pdfLines(await file.arrayBuffer());
+    if (!lines.length) throw new Error(`${file.name} has no readable text (it may be a scanned image). Try a photo or screenshot of it instead.`);
+    return { ...parseDocLines(lines), name:file.name };
+  }
+  if (/^image\//.test(file.type) || /\.(png|jpe?g|webp|bmp|gif|heic)$/i.test(file.name)){
+    const lines = await imageLines(file, onProgress);
+    if (!lines.length) throw new Error(`Couldn't find any text in ${file.name}. Try a sharper, straight-on photo.`);
+    return { ...parseDocLines(lines), name:file.name, photo:true };
+  }
+  return { ...parsePaste(await file.text()), name:file.name };
+}// Several files at once: a sales order already lists every item, so packing slips for the same order are not added again.
+function mergeImports(res){
+  const so = res.filter(r => r.type==="Sales order"), notes=[];
+  const covered = r => r.type!=="Sales order" && so.some(s => s.order.some(o => r.order.includes(o)));
+  const use = res.filter(r => !covered(r));
+  res.filter(covered).forEach(r => notes.push(`${r.name}: same order as the uploaded sales order, so its items weren't added twice.`));
+  return { found:use.flatMap(r=>r.found), skipped:use.flatMap(r=>r.skipped), missing:use.flatMap(r=>r.missing),
+    sources:use.map(r => `${r.type}${r.order.length?` · Order ${r.order.join(" / ")}`:""} · ${r.name}`), notes };
+}
+async function handleFiles(files){
+  const msg = $("#importMsg"); if (!files.length) return;
+  msg.innerHTML = `<span class="muted">Reading ${files.length===1?esc(files[0].name):files.length+" files"}…</span>`;
+  const res=[], errs=[];
+  for (const f of files){
+    try { res.push(await importFile(f, pr => { msg.innerHTML = `<span class="muted">Reading photo ${esc(f.name)}… ${Math.round(pr*100)}%</span>`; })); }
+    catch(e){ errs.push(esc(e.message || `Couldn't read ${f.name}`)); }
+  }
+  if (res.some(r => r.photo)) errs.push("Read from a photo — double-check SKUs and quantities below before adding.");
+  msg.innerHTML = errs.map(e=>`<div class="err">${e}</div>`).join("");
+  if (res.length){ state.pasteRows = mergeImports(res); renderReview(); }
+}
+
+/* ---------- prefill links ----------
+   A link can fill in the order, e.g. built by Claude using the NetSuite MCP:
+        https://<site>/?order=SO1001&items=RK7-UP-80-MBLK:1,RK7-CR-16-MBLK:2
+   Items show up in the review list so staff can confirm before adding. */
+// items: [{ sku, qty, part? }] → review list
+function applyPrefill(items, source, orderNo){
+  const found=[], missing=[];
+  for (const it of items){
+    const sku = lookupSku(it.sku), qty = Math.max(0, Number(it.qty) || 0);
+    if (!qty) continue;
+    if (sku) found.push({ sku, qty, part: it.part || null, title: it.name || "", on:true });
+    else missing.push({ sku: it.sku, qty, title: it.name || "" });
+  }
+  if (orderNo){ state.orderNo = orderNo; $("#orderNo").value = orderNo; }
+  state.pasteRows = { found, skipped:[], missing, sources:[source], notes: found.length ? [] : ["No items with packaged dimensions were found on this order."] };
+  document.querySelector('[data-tab="paste"]').click(); renderReview();
+}
+function readPrefillLink(){
+  const q = new URLSearchParams(location.search || location.hash.replace(/^#/, ""));
+  const raw = q.get("items"); if (!raw) return;
+  const items = raw.split(",").map(s => { const [sku, qty] = s.split(/[:*]/); return { sku:(sku||"").trim(), qty: qty ? parseFloat(qty) : 1 }; }).filter(i => i.sku);
+  const order = (q.get("order") || q.get("so") || "").slice(0, 40);
+  applyPrefill(items, `Link${order ? " · " + order : ""}`, order);
+}
+function renderReview(){
+  const el = $("#review"), p = state.pasteRows;
+  if (!p){ el.innerHTML=""; return; }
+  const rowsHtml = p.found.map((r,i)=>`<div class="rv"><input type="checkbox" data-rv-on="${i}" ${r.on?"checked":""} aria-label="Include"><div><b>${esc(BUNDLES[r.sku]?displayName(r.sku):box(r.sku).name)}</b><br><span class="mono muted" style="font-size:12px">${esc(r.sku)}</span>${r.part?` <span class="chip acc">Part of: ${esc(r.part)}</span>`:""}${!childrenOf(r.sku).every(([c])=>box(c).valid)?` <span class="chip flag">Verify dims</span>`:""}</div><input class="qtyin" type="number" min="0" value="${r.qty}" data-rv-q="${i}" aria-label="Quantity" style="border:1px solid var(--line-2);border-radius:8px;padding:6px 8px"></div>`).join("");
+  el.innerHTML = `${(p.sources||[]).map(s=>`<div class="src">From: ${esc(s)}</div>`).join("")}${(p.notes||[]).map(s=>`<div class="src">${esc(s)}</div>`).join("")}
+    <h3>Matched (${p.found.length})</h3>${rowsHtml || `<div class="rv-note">No known SKUs found.</div>`}
+    ${p.skipped.length?`<h3>Skipped (0 quantity)</h3>${p.skipped.map(s=>`<div class="rv-note"><span class="mono">${esc(s.sku)}</span> — ${esc(s.title)}</div>`).join("")}`:""}
+    ${p.missing.length?`<h3>Not found in product data</h3>${p.missing.map(s=>`<div class="rv-note"><span class="mono">${esc(s.sku)}</span> — ${esc(s.title)} (qty ${s.qty})</div>`).join("")}`:""}
+    <div class="addbar"><div class="sp"></div><button class="btn ghost sm" id="rvCancel">Cancel</button><button class="btn accent" id="rvAdd" ${p.found.some(r=>r.on&&r.qty>0)?"":"disabled"}>Add to order</button></div>`;
+}
+
+/* ---------- render all ---------- */
+function render(){
+  const t = compute(), r = recommend(t);
+  renderCart(); renderTotals(t); renderTruck(t, r); renderRec(t, r); renderPreview(t); buildPrint(t, r);
+}
+function toast(msg){ const el=$("#toast"); el.textContent=msg; el.classList.add("on"); clearTimeout(toast._t); toast._t=setTimeout(()=>el.classList.remove("on"),1800); }
+
+/* ---------- events ---------- */
+$("#logoTop").src = LOGO_WHITE;
+let qT; $("#q").addEventListener("input", ()=>{ clearTimeout(qT); qT=setTimeout(renderResults, 60); });
+$("#results").addEventListener("change", e => { const s=e.target.dataset.opt; if (!s) return; e.target.checked ? state.sel.add(s) : state.sel.delete(s); renderSel(); });
+$("#allSkus").addEventListener("change", e => { state.all = e.target.checked; renderResults(); });
+$("#results").addEventListener("click", e => { const k=e.target.dataset.more; if (k){ expanded.add(k); renderResults(); } });
+$("#addSel").addEventListener("click", ()=>{ const n=state.sel.size; state.sel.forEach(id => { const o = OPTS.get(id); if (o) addLine(o.sku, 1, null, o.alts); }); state.sel.clear(); renderSel(); renderResults(); render(); toast(`Added ${n} ${n===1?"product":"products"}`); });
+$("#selClear").addEventListener("click", ()=>{ state.sel.clear(); renderSel(); renderResults(); });
+document.querySelectorAll("[data-tab]").forEach(b => b.addEventListener("click", ()=>{
+  document.querySelectorAll("[data-tab]").forEach(x=>x.setAttribute("aria-selected", x===b));
+  $("#tab-search").hidden = b.dataset.tab!=="search"; $("#tab-paste").hidden = b.dataset.tab!=="paste";
+}));
+$("#parseBtn").addEventListener("click", ()=>{ const r = parsePaste($("#paste").value); state.pasteRows = { ...r, sources:[`${r.type}${r.order.length?` · Order ${r.order.join(" / ")}`:""} · pasted text`] }; renderReview(); });
+$("#fileIn").addEventListener("change", e => { handleFiles([...e.target.files]); e.target.value=""; });
+const drop = $("#drop");
+["dragenter","dragover"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("over"); }));
+["dragleave","drop"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove("over"); }));
+drop.addEventListener("drop", e => handleFiles([...e.dataTransfer.files]));
+function renderCats(){
+  $("#cats").innerHTML = [["","All"], ...CATEGORIES.map(c=>[c,c])].map(([v,l]) => `<button data-cat="${esc(v)}" aria-pressed="${state.cat===v}">${esc(l)}</button>`).join("");
+}
+$("#cats").addEventListener("click", e => { const b = e.target.closest("[data-cat]"); if (!b) return; state.cat = b.dataset.cat; renderCats(); renderResults(); });
+$("#review").addEventListener("change", e => {
+  const p=state.pasteRows; if (!p) return;
+  if (e.target.dataset.rvOn!=null) p.found[+e.target.dataset.rvOn].on = e.target.checked;
+  if (e.target.dataset.rvQ!=null) p.found[+e.target.dataset.rvQ].qty = Math.max(0, parseInt(e.target.value,10)||0);
+  renderReview();
+});
+$("#review").addEventListener("click", e => {
+  if (e.target.id==="rvCancel"){ state.pasteRows=null; renderReview(); }
+  if (e.target.id==="rvAdd"){
+    let n=0; for (const r of state.pasteRows.found) if (r.on && r.qty>0){ addLine(r.sku, r.qty, r.part); REF.add(r.sku); n++; }
+    state.pasteRows=null; $("#paste").value=""; renderReview(); render(); toast(`Added ${n} ${n===1?"item":"items"} from packing slip`);
+  }
+});
+$("#cart").addEventListener("click", async e => {
+  const c = e.target.closest("[data-copy]");
+  if (c){ const v = c.dataset.copy;
+    try { await navigator.clipboard.writeText(v); } catch { const ta=document.createElement("textarea"); ta.value=v; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove(); }
+    c.classList.add("ok"); setTimeout(()=>c.classList.remove("ok"), 900); toast(`Copied ${c.dataset.what}: ${v}`); return; }
+  const d=e.target.dataset, find = id => state.lines.find(l=>l.id===+id);
+  if (d.rm){ state.lines = state.lines.filter(l=>l.id!==+d.rm); render(); }
+  else if (d.inc){ find(d.inc).qty++; render(); }
+  else if (d.dec){ const l=find(d.dec); if (l.qty>1){ l.qty--; render(); } }
+});
+$("#cart").addEventListener("change", e => {
+  if (e.target.dataset.alt){ const l = state.lines.find(x=>x.id===+e.target.dataset.alt); l.sku = e.target.value; render(); return; }
+  const id=e.target.dataset.qty; if (!id) return;
+  const l=state.lines.find(x=>x.id===+id), v=parseInt(e.target.value,10);
+  if (v>0) l.qty=v; render();
+});
+$("#cart").addEventListener("toggle", e => { const id=+e.target.dataset.id; if (!id) return; e.target.open ? state.open.delete(id) : state.open.add(id); }, true);
+$("#clearAll").addEventListener("click", ()=>{ if (!state.lines.length) return; state.lines=[]; state.open.clear(); render(); toast("Order cleared"); });
+document.querySelectorAll("[data-unit-w]").forEach(b=>b.addEventListener("click",()=>{ state.w=b.dataset.unitW; document.querySelectorAll("[data-unit-w]").forEach(x=>x.setAttribute("aria-pressed",x===b)); render(); }));
+document.querySelectorAll("[data-unit-d]").forEach(b=>b.addEventListener("click",()=>{ state.d=b.dataset.unitD; document.querySelectorAll("[data-unit-d]").forEach(x=>x.setAttribute("aria-pressed",x===b)); render(); }));
+document.querySelectorAll("[data-view]").forEach(b=>b.addEventListener("click",()=>{ state.view=b.dataset.view; document.querySelectorAll("[data-view]").forEach(x=>x.setAttribute("aria-pressed",x===b)); render(); }));
+$("#orderNo").addEventListener("input", e=>{ state.orderNo=e.target.value.trim(); const t=compute(); buildPrint(t, recommend(t)); });
+$("#copyBtn").addEventListener("click", async ()=>{
+  if (!state.lines.length){ toast("Nothing to copy yet"); return; }
+  const txt = packText(compute());
+  try { await navigator.clipboard.writeText(txt); }
+  catch { const ta=document.createElement("textarea"); ta.value=txt; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove(); }
+  toast("Packing list copied");
+});
+$("#printBtn").addEventListener("click", ()=>{ const t=compute(); buildPrint(t, recommend(t)); window.print(); });
+window.addEventListener("beforeprint", ()=>{ const t=compute(); buildPrint(t, recommend(t)); });
+
+/* ---------- demo helpers (public portfolio version) ---------- */
+const SAMPLE_ORDER = [["CT-7000-DUAL-6-8030-S",1],["RK7-UP-93-MBLK-4",1],["RK7-CR-30-MBLK",2],["RK7-LPC-STD",1],["PL-BMP-45-2",2],["BN-ADJ-MBLK",1],["FL-MAT-4x6",1]];
+const SAMPLE_SLIP = `Bundle Air Bike
+Box 1
+CD-BIKE-1
+Part of: Air Bike
+1 of 1
+Bundle Air Bike
+Box 2
+CD-BIKE-2
+Part of: Air Bike
+1 of 1
+SR-7 Crossmembers
+Pair / 16" / Matte Black
+RK7-CR-16-MBLK
+Part of: SR-7 Crossmembers
+2 of 2
+Rowing Machine
+CD-ROWER
+0 of 0
+Logo Tee
+Black / Large
+TEE-2041-BLK-L
+1 of 1`;
+$("#cart").addEventListener("click", e => { if (e.target.id==="demoOrder"){ SAMPLE_ORDER.forEach(([s,q]) => addLine(s, q)); state.orderNo="SO-DEMO-1001"; $("#orderNo").value=state.orderNo; render(); toast("Sample order loaded"); } });
+$("#sampleSlip").addEventListener("click", () => { $("#paste").value = SAMPLE_SLIP; $("#parseBtn").click(); });
+renderSel(); renderCats(); render(); readPrefillLink();
+window.APP_DEBUG.state = state; window.APP_DEBUG.compute = compute; window.APP_DEBUG.recommend = recommend; window.APP_DEBUG.packText = () => packText(compute()); window.APP_DEBUG.parsePaste = parsePaste; window.APP_DEBUG.importFile = importFile; window.APP_DEBUG.pdfLines = pdfLines; window.APP_DEBUG.parseDocLines = parseDocLines; window.APP_DEBUG.applyPrefill = applyPrefill; window.APP_DEBUG.mergeImports = mergeImports; window.APP_DEBUG.CATEGORIES = CATEGORIES; window.APP_DEBUG.PRODUCTS = PRODUCTS; window.APP_DEBUG.search = search;
+})();
+</script>
+</body>
+</html>
