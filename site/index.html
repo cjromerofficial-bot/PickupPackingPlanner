@@ -76,7 +76,13 @@ button{cursor:pointer}
 .fam-h .ct{font-size:12px;color:var(--muted)}
 .var{display:flex;align-items:center;gap:10px;padding:8px 12px 8px 56px;border-top:1px solid #f0f0f2;cursor:pointer}
 .var:hover{background:#f7f8ff}
-.var input{width:16px;height:16px;accent-color:var(--accent);flex:none}
+.var input[type=checkbox]{width:16px;height:16px;accent-color:var(--accent);flex:none}
+.selq{display:inline-flex;align-items:center;border:1px solid var(--line-2);border-radius:7px;overflow:hidden;flex:none;opacity:.45;transition:opacity .15s}
+.selq.on,.var:hover .selq{opacity:1}
+.selq button{border:0;background:#fff;width:24px;height:26px;font-weight:700;cursor:pointer}
+.selq button:hover{background:#f2f2f4}
+.selq input{width:38px;height:26px;border:0;border-left:1px solid var(--line);border-right:1px solid var(--line);text-align:center;font-weight:700;outline:none;-moz-appearance:textfield}
+.selq input::-webkit-outer-spin-button,.selq input::-webkit-inner-spin-button{-webkit-appearance:none}
 .var .lb{flex:1;min-width:0}
 .var .sku{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;color:var(--muted)}
 .chip{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:2px 7px;border-radius:999px;background:#f0f1f3;color:var(--ink-2);white-space:nowrap}
@@ -769,7 +775,7 @@ function displayName(sku){
 window.APP_DEBUG = { FAMILIES, unsureFamilies: () => FAMILIES.filter(f=>f.derived).map(f=>`${f.key}: ${f.name}`) };
 
 /* ---------- state (memory only) ---------- */
-const state = { lines:[], w:"lb", d:"in", view:"grouped", orderNo:"", open:new Set(), sel:new Set(), nextId:1, pasteRows:null, cat:"", all:false };
+const state = { lines:[], w:"lb", d:"in", view:"grouped", orderNo:"", open:new Set(), sel:new Set(), nextId:1, pasteRows:null, cat:"", all:false, selQty:new Map() };
 
 /* ---------- units ---------- */
 const r1 = n => (Math.round(n*10)/10).toLocaleString(undefined,{minimumFractionDigits:1,maximumFractionDigits:1});
@@ -978,15 +984,29 @@ function renderResults(){
     const init = r.title.replace(/[^A-Za-z0-9 ]/g,"").split(/\s+/).slice(0,2).map(w=>w[0]||"").join("").toUpperCase();
     const hdr = r.archive && !archHdr ? (archHdr = true, `<div class="arch-h">Other SKUs (parts, older and discontinued items)</div>`) : "";
     return hdr + `<div class="fam"><div class="fam-h"><div class="thumb">${esc(init)}</div><div><div class="nm">${esc(r.title)}</div><div class="ct">${r.opts.length} ${r.opts.length===1?"option":"options"}${r.group?` · ${esc(r.group)}`:""}</div></div>${r.cat?`<span class="chip cat">${esc(r.cat)}</span>`:""}</div>`+
-      r.opts.slice(0,lim).map(o => `<label class="var"><input type="checkbox" data-opt="${esc(o.id)}" ${state.sel.has(o.id)?"checked":""}><span class="lb">${esc(o.label)}${isRef(o)?` <span class="pop">Popular</span>`:""}<br><span class="sku">${esc(o.sku)}${o.alts.length>1?` · ${o.alts.length} colors, same box`:""}</span></span>${o.bad?`<span class="chip flag">Verify dims</span>`:""}<span class="chip">${o.boxes} ${o.boxes===1?"box":"boxes"}</span></label>`).join("")+
+      r.opts.slice(0,lim).map(o => `<label class="var"><input type="checkbox" data-opt="${esc(o.id)}" ${state.sel.has(o.id)?"checked":""}><span class="lb">${esc(o.label)}${isRef(o)?` <span class="pop">Popular</span>`:""}<br><span class="sku">${esc(o.sku)}${o.alts.length>1?` · ${o.alts.length} colors, same box`:""}</span></span>${o.bad?`<span class="chip flag">Verify dims</span>`:""}<span class="chip">${o.boxes} ${o.boxes===1?"box":"boxes"}</span>${selQty(o.id)}</label>`).join("")+
       (r.opts.length>lim ? `<div class="more"><button data-more="${esc(r.key)}">Show all ${r.opts.length} options</button></div>` : "") + `</div>`;
   }).join("");
+}
+// Quantity picker on each search result: pick how many before adding (changing it also ticks the row).
+function selQty(id){
+  const q = state.selQty.get(id) || 1;
+  return `<span class="selq${state.sel.has(id)?" on":""}"><button type="button" data-qdec="${esc(id)}" aria-label="Fewer">−</button><input type="number" min="1" step="1" value="${q}" data-optq="${esc(id)}" aria-label="Quantity to add"><button type="button" data-qinc="${esc(id)}" aria-label="More">+</button></span>`;
+}
+function setSelQty(id, q, input){
+  q = Math.max(1, Math.min(999, Math.round(q) || 1)); state.selQty.set(id, q);
+  if (input) input.value = q;
+  if (!state.sel.has(id)){ state.sel.add(id); const cb = input && input.closest(".var").querySelector("input[type=checkbox]"); if (cb) cb.checked = true; }
+  if (input) input.closest(".selq").classList.add("on");
+  renderSel();
 }
 function renderSel(){
   const n = state.sel.size;
   $("#selCount").textContent = n ? `${n} selected` : "No products selected";
   $("#addSel").disabled = !n; $("#selClear").hidden = !n;
-  $("#addSel").textContent = n ? `Add ${n}` : "Add";
+  const units = [...state.sel].reduce((a, id) => a + (state.selQty.get(id) || 1), 0);
+  if (n) $("#selCount").textContent = `${n} selected · ${units} ${units===1?"unit":"units"}`;
+  $("#addSel").textContent = "Add";
 }
 
 /* ---------- cart ---------- */
@@ -1229,12 +1249,12 @@ function initV3(){
   el.addEventListener("touchmove", e => { if (e.touches.length===2){ const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY); if (pinch) V3.radius = Math.min(V3.fit*2.2, Math.max(V3.fit*0.45, V3.radius*pinch/d)); pinch=d; kick(); } }, { passive:true });
   el.addEventListener("touchend", () => { pinch=0; });
   $("#v3reset").addEventListener("click", () => { V3.userView=false; frameCamera(); kick(); });
-  new ResizeObserver(() => { sizeV3(); kick(); }).observe(host);
+  new ResizeObserver(() => { sizeV3(); frameCamera(); kick(); }).observe(host);
   sizeV3();
   return true;
 }
 function sizeV3(){
-  const w = V3.host.clientWidth || 600, h = Math.round(w*0.66);
+  const w = V3.host.clientWidth || 600, h = Math.round(w*(w < 480 ? 0.68 : 0.54));   // compact; a bit taller on phones
   V3.renderer.setSize(w, h, false); V3.renderer.domElement.style.width = w+"px"; V3.renderer.domElement.style.height = h+"px";
   V3.camera.aspect = w/h; V3.camera.updateProjectionMatrix();
 }
@@ -1393,11 +1413,24 @@ function frameCamera(){
   if (!V3.veh) return;
   const bb = V3.veh.bb.clone(); if (V3.extra) bb.union(V3.extra);
   bb.expandByPoint(V3.person.position.clone().add(new THREE.Vector3(0, 72, 0)));       // keep the 6 ft person in frame
-  const s = bb.getBoundingSphere(new THREE.Sphere());
-  const fv = V3.camera.fov*Math.PI/180, fh = 2*Math.atan(Math.tan(fv/2)*V3.camera.aspect);
-  V3.fit = s.radius / Math.sin(Math.min(fv, fh)/2) * 0.92;
-  V3.target.set(s.center.x, s.center.y*0.8, s.center.z);
-  if (!V3.userView){ V3.radius = V3.fit; V3.theta = 0.62; V3.phi = 1.08; }
+  const s = bb.getBoundingSphere(new THREE.Sphere()), cam = V3.camera;
+  const fv = cam.fov*Math.PI/180, fh = 2*Math.atan(Math.tan(fv/2)*cam.aspect);
+  const th = V3.userView ? V3.theta : 0.62, ph = V3.userView ? V3.phi : 1.08;
+  V3.fit = s.radius / Math.sin(Math.min(fv, fh)/2);
+  V3.target.copy(s.center);
+  // Tighten: project the 8 corners of the scene box and re-center / re-zoom so the vehicle fills the view.
+  const corners = []; for (const x of [bb.min.x, bb.max.x]) for (const y of [bb.min.y, bb.max.y]) for (const z of [bb.min.z, bb.max.z]) corners.push(new THREE.Vector3(x, y, z));
+  for (let it = 0; it < 4; it++){
+    const r = V3.fit, tg = V3.target;
+    cam.position.set(tg.x + r*Math.sin(ph)*Math.cos(th), tg.y + r*Math.cos(ph), tg.z + r*Math.sin(ph)*Math.sin(th)); cam.lookAt(tg); cam.updateMatrixWorld();
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+    for (const c of corners){ const v = c.clone().project(cam); x0 = Math.min(x0, v.x); x1 = Math.max(x1, v.x); y0 = Math.min(y0, v.y); y1 = Math.max(y1, v.y); }
+    const halfH = Math.tan(fv/2)*r, halfW = halfH*cam.aspect;
+    V3.target.addScaledVector(new THREE.Vector3().setFromMatrixColumn(cam.matrixWorld, 0), (x0+x1)/2*halfW)
+             .addScaledVector(new THREE.Vector3().setFromMatrixColumn(cam.matrixWorld, 1), (y0+y1)/2*halfH);
+    V3.fit *= Math.max((x1-x0)/2/0.9, (y1-y0)/2/0.84);
+  }
+  if (!V3.userView){ V3.radius = V3.fit; V3.theta = th; V3.phi = ph; }
 }
 function placeCamera(){
   const r = V3.radius, t = V3.target;
@@ -1463,7 +1496,8 @@ function renderLoad(t, r){
   if (V3.ok === false && !V3.tried){
     V3.tried = true;
     V3.ok = !/[?&]no3d\b/.test(location.search) && initV3();   // ?no3d forces the simple view
-    $("#v3d").hidden = !V3.ok; $("#truck").hidden = V3.ok; $("#v3note").hidden = V3.ok;
+    $("#v3d").hidden = !V3.ok; $("#v3note").hidden = V3.ok;
+    $("#truck").style.display = V3.ok ? "none" : "";   // SVG elements ignore .hidden
   }
   if (V3.ok) renderVehicle3D(t, r); else renderTruck(t, r);
 }
@@ -1870,11 +1904,28 @@ function toast(msg){ const el=$("#toast"); el.textContent=msg; el.classList.add(
 /* ---------- events ---------- */
 $("#logoTop").src = LOGO_WHITE;
 let qT; $("#q").addEventListener("input", ()=>{ clearTimeout(qT); qT=setTimeout(renderResults, 60); });
-$("#results").addEventListener("change", e => { const s=e.target.dataset.opt; if (!s) return; e.target.checked ? state.sel.add(s) : state.sel.delete(s); renderSel(); });
+$("#results").addEventListener("change", e => {
+  if (e.target.dataset.optq){ setSelQty(e.target.dataset.optq, parseInt(e.target.value, 10), e.target); return; }
+  const s = e.target.dataset.opt; if (!s) return;
+  e.target.checked ? state.sel.add(s) : state.sel.delete(s);
+  e.target.closest(".var").querySelector(".selq").classList.toggle("on", e.target.checked);
+  renderSel();
+});
+$("#results").addEventListener("click", e => {
+  const b = e.target.closest("[data-qinc],[data-qdec]"); if (!b) return;
+  e.preventDefault();                                            // don't toggle the row's checkbox
+  const id = b.dataset.qinc || b.dataset.qdec, input = b.parentElement.querySelector("input");
+  setSelQty(id, (parseInt(input.value, 10) || 1) + (b.dataset.qinc ? 1 : -1), input);
+});
 $("#allSkus").addEventListener("change", e => { state.all = e.target.checked; renderResults(); });
 $("#results").addEventListener("click", e => { const k=e.target.dataset.more; if (k){ expanded.add(k); renderResults(); } });
-$("#addSel").addEventListener("click", ()=>{ const n=state.sel.size; state.sel.forEach(id => { const o = OPTS.get(id); if (o) addLine(o.sku, 1, null, o.alts); }); state.sel.clear(); renderSel(); renderResults(); render(); toast(`Added ${n} ${n===1?"product":"products"}`); });
-$("#selClear").addEventListener("click", ()=>{ state.sel.clear(); renderSel(); renderResults(); });
+$("#addSel").addEventListener("click", ()=>{
+  let n = 0, units = 0;
+  state.sel.forEach(id => { const o = OPTS.get(id), q = state.selQty.get(id) || 1; if (o){ addLine(o.sku, q, null, o.alts); n++; units += q; } });
+  state.sel.clear(); state.selQty.clear(); renderSel(); renderResults(); render();
+  toast(`Added ${n} ${n===1?"product":"products"}${units>n ? ` (${units} units)` : ""}`);
+});
+$("#selClear").addEventListener("click", ()=>{ state.sel.clear(); state.selQty.clear(); renderSel(); renderResults(); });
 document.querySelectorAll("[data-tab]").forEach(b => b.addEventListener("click", ()=>{
   document.querySelectorAll("[data-tab]").forEach(x=>x.setAttribute("aria-selected", x===b));
   $("#tab-search").hidden = b.dataset.tab!=="search"; $("#tab-paste").hidden = b.dataset.tab!=="paste";
