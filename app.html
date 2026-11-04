@@ -968,16 +968,32 @@ function renderTruck(t, rec){
    Car → SUV → Pickup → Cargo Van → Box Truck, or a trailer when the load is bigger than the box truck.
    Falls back to the SVG truck above if WebGL or three.js isn't available. */
 const V3 = { ok:false };
-// Vehicle shapes in inches. Front of the vehicle points to −x; the cargo opening faces +x (toward the camera).
-// shells: see-through body blocks [x0,x1,y0,y1,width]; walls: solid low walls (pickup bed, trailer rails);
-// cargo: where boxes are packed (x0 = front of the cargo area, floor height, L × W × H to pack into).
+// Vehicle models in inches. Front of the vehicle points to −x; the cargo opening faces +x (toward the camera).
+// body: side profile [x,y] from front-bottom, over the roof, to rear-bottom; extruded across `w` with rounded edges.
+// arches: wheel openings cut into the profile bottom; glass: side windows (polygons) and windshield/rear glass (two-point edges).
+// cargo: where boxes are packed (x0 = front of the cargo area, floor height); L × W × H come from VEHICLE_CONFIG.
 const VEHICLE_SHAPES = {
-  car:    { shells:[[-112,62,12,34,70],[-58,36,34,54,62]], wheels:[[-80,13],[38,13]], track:60, cargo:{x0:2,  floor:22} },
-  suv:    { shells:[[-118,74,12,44,76],[-74,74,44,72,72]], wheels:[[-86,15],[44,15]], track:64, cargo:{x0:2,  floor:26} },
-  pickup: { shells:[[-140,-12,14,46,76],[-86,-12,46,76,72]], walls:[[-8,82,30,52,72]], wheels:[[-108,16],[52,16]], track:64, cargo:{x0:-4, floor:32} },
-  van:    { shells:[[-172,-142,14,52,78],[-142,124,14,100,82]], wheels:[[-134,16],[92,16]], track:68, cargo:{x0:2,  floor:24} },
-  box:    { shells:[[-182,-108,16,62,86],[-166,-108,62,96,84],[-104,22,30,114,98]], wheels:[[-156,18],[-16,18]], track:76, cargo:{x0:-100, floor:32}, rollDoor:true },
-  trailer:{ shells:[[-372,-244,14,46,76],[-318,-244,46,76,72]], walls:[[-238,-160,30,50,72],[0,146,24,40,80]], wheels:[[-340,16],[-182,16],[72,14]], track:64, cargo:{x0:1, floor:24}, tongue:[-160,0] },
+  car: { w:70, track:60, wheels:[[-80,13],[38,13]], cargo:{ x0:2, floor:30 },
+    body:[[-110,15],[-114,26],[-110,33],[-52,39],[-22,57],[46,58],[66,46],[68,30],[66,15]],
+    side:[[-48,41],[-24,55],[44,55],[60,47],[60,41]], panes:[[[-52,39],[-22,57]],[[46,58],[66,46]]],
+    head:[-112,30], tail:[67,38], mirror:[-48,40] },
+  suv: { w:76, track:64, wheels:[[-86,15],[44,15]], cargo:{ x0:2, floor:34 },
+    body:[[-116,17],[-120,30],[-115,42],[-74,47],[-46,71],[68,73],[77,70],[79,40],[76,17]],
+    side:[[-70,49],[-46,69],[66,69],[74,66],[74,49]], panes:[[[-74,47],[-46,71]],[[77,70],[78.6,49]]],
+    head:[-118,38], tail:[78,58], mirror:[-70,48] },
+  pickup: { w:74, track:64, wheels:[[-108,16],[52,16]], cargo:{ x0:-4, floor:36 },
+    body:[[-138,19],[-142,34],[-136,47],[-92,53],[-66,79],[-18,81],[-12,78],[-11,19]],
+    side:[[-88,55],[-66,77],[-20,77],[-16,74],[-16,55]], panes:[[[-92,53],[-66,79]],[[-12,78],[-11.4,58]]],
+    bed:{ x0:-8, x1:86, y0:22, y1:58, w:70 }, head:[-140,42], tail:[85,50], mirror:[-88,54] },
+  van: { w:82, track:68, wheels:[[-134,16],[92,16]], cargo:{ x0:2, floor:36 },
+    body:[[-170,19],[-174,34],[-169,47],[-146,55],[-122,93],[-108,101],[120,101],[127,97],[128,19]],
+    side:[[-140,59],[-122,90],[-102,90],[-102,59]], panes:[[[-146,55],[-122,93]]],
+    head:[-172,44], tail:[127,70], mirror:[-140,58] },
+  box: { w:86, track:76, wheels:[[-156,18],[-16,18]], dual:true, cargo:{ x0:-100, floor:40 },
+    body:[[-182,21],[-186,40],[-180,57],[-150,63],[-128,101],[-114,105],[-106,103],[-105,21]],
+    side:[[-146,65],[-128,99],[-112,99],[-112,65]], panes:[[[-150,63],[-128,101]]],
+    box:{ x0:-104, x1:24, y0:36, y1:126, w:96 }, head:[-184,48], tail:[24,30], mirror:[-146,64] },
+  trailer: { trailer:true, tow:-150, cargo:{ x0:1, floor:24 }, deck:{ x0:0, x1:146, w:76 }, axle:[72,14], track:88 },
 };
 function cargoDims(v){
   if (v.id==="trailer") return { L:VEHICLE_CONFIG.visualOnly.trailer.cargoLengthIn, W:VEHICLE_CONFIG.visualOnly.trailer.cargoWidthIn, H:VEHICLE_CONFIG.visualOnly.trailer.cargoHeightIn };
@@ -1067,35 +1083,145 @@ function hoverBox(e){
   tip.innerHTML = `<b>${esc(b.sku)}</b><br>${esc(b.name)}<br>${fD(b.L)} × ${fD(b.W)} × ${fD(b.H)} ${state.d} · ${fW(b.wt)} ${state.w}`;
   tip.style.left = (e.clientX-r.left+12)+"px"; tip.style.top = (e.clientY-r.top+12)+"px"; tip.hidden = false;
 }
-function shellMat(){ return new THREE.MeshPhongMaterial({ color:0xc9d4ee, transparent:true, opacity:0.3, depthWrite:false, side:THREE.DoubleSide, shininess:80 }); }
+// "X-ray glass" material: nearly clear face-on, brighter toward the edges (Fresnel), so the body reads as a solid
+// shape while the load inside stays visible.
+function xrayMat(color, base, rim){
+  return new THREE.ShaderMaterial({
+    uniforms:{ c:{ value:new THREE.Color(color) }, base:{ value:base }, rim:{ value:rim }, opacity:{ value:1 } },
+    vertexShader:`varying vec3 vN; varying vec3 vV;
+      void main(){ vec4 mv = modelViewMatrix*vec4(position,1.0); vN = normalize(normalMatrix*normal); vV = normalize(-mv.xyz); gl_Position = projectionMatrix*mv; }`,
+    fragmentShader:`uniform vec3 c; uniform float base; uniform float rim; uniform float opacity; varying vec3 vN; varying vec3 vV;
+      void main(){ float f = pow(1.0-abs(dot(normalize(vN), normalize(vV))), 2.2);
+        vec3 col = mix(c, vec3(1.0), f*0.45) + vec3(0.06)*max(dot(normalize(vN), normalize(vec3(0.4,0.8,0.3))), 0.0);
+        gl_FragColor = vec4(col, (base + rim*f)*opacity); }`,
+    transparent:true, depthWrite:false, side:THREE.DoubleSide,
+  });
+}
+const BODY_TINT = 0x8fa6d4, GLASS_TINT = 0x1d2b45;
+// Side profile → THREE.Shape, with round wheel arches cut into the bottom edge.
+function profileShape(pts, arches){
+  const s = new THREE.Shape(), yb = pts[0][1];
+  s.moveTo(pts[0][0], pts[0][1]);
+  for (let i=1; i<pts.length; i++) s.lineTo(pts[i][0], pts[i][1]);
+  for (const [cx, rw] of [...(arches||[])].sort((a,b) => b[0]-a[0])){       // rear to front along the bottom
+    const ra = rw + 3, a0 = Math.asin(Math.max(-1, Math.min(1, (yb-rw)/ra)));
+    s.lineTo(cx + ra*Math.cos(a0), yb);
+    s.absarc(cx, rw, ra, a0, Math.PI-a0, false);
+    s.lineTo(cx - ra*Math.cos(a0), yb);
+  }
+  s.lineTo(pts[0][0], pts[0][1]);
+  return s;
+}
+function extrude(shape, w, bevel){
+  const b = bevel ?? 3, d = Math.max(0.5, w - 2*b);
+  const geo = new THREE.ExtrudeGeometry(shape, { depth:d, bevelEnabled:b>0, bevelThickness:b, bevelSize:b, bevelSegments:3, curveSegments:18 });
+  geo.translate(0, 0, -d/2);
+  return geo;
+}
 function buildVehicle(id, cg){
-  const S = VEHICLE_SHAPES[id], g = new THREE.Group(), edge = new THREE.LineBasicMaterial({ color:0x1f4bff, transparent:true, opacity:0.75 });
-  const solid = new THREE.MeshLambertMaterial({ color:0x2b2f38 }), tire = new THREE.MeshLambertMaterial({ color:0x111214 }), hub = new THREE.MeshLambertMaterial({ color:0xc9ccd2 });
-  const addBlock = (x0,x1,y0,y1,w,mat,lines=true) => {
-    const geo = new THREE.BoxGeometry(x1-x0, y1-y0, w), m = new THREE.Mesh(geo, mat); m.position.set((x0+x1)/2, (y0+y1)/2, 0); g.add(m);
-    if (lines){ const l = new THREE.LineSegments(new THREE.EdgesGeometry(geo), edge); l.position.copy(m.position); g.add(l); }
-    return m;
+  const S = VEHICLE_SHAPES[id], g = new THREE.Group();
+  const bodyMat = xrayMat(BODY_TINT, 0.07, 0.62), glassMat = xrayMat(GLASS_TINT, 0.32, 0.45);
+  const edgeMat = new THREE.LineBasicMaterial({ color:0x4d6aa8, transparent:true, opacity:0.45 });
+  const dark = new THREE.MeshPhongMaterial({ color:0x24272e, shininess:30 }), metal = new THREE.MeshPhongMaterial({ color:0x6b7280, shininess:70 });
+  const add = (geo, mat, x=0, y=0, z=0) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); g.add(m); return m; };
+  const outline = (geo, x=0, y=0, z=0) => { const l = new THREE.LineSegments(new THREE.EdgesGeometry(geo, 25), edgeMat); l.position.set(x, y, z); g.add(l); };
+  const block = (x0,x1,y0,y1,w,mat,z=0) => add(new THREE.BoxGeometry(x1-x0, y1-y0, w), mat, (x0+x1)/2, (y0+y1)/2, z);
+  const pane = (p, q, w) => {                                   // flat glass between two profile points, across the width
+    const geo = new THREE.BufferGeometry(), h = w/2;
+    geo.setAttribute("position", new THREE.Float32BufferAttribute([p[0],p[1],-h, q[0],q[1],-h, q[0],q[1],h, p[0],p[1],-h, q[0],q[1],h, p[0],p[1],h], 3));
+    geo.computeVertexNormals(); add(geo, glassMat);
   };
-  for (const s of S.shells) addBlock(...s, shellMat());
-  for (const [x0,x1,y0,y1,w] of (S.walls||[])){
-    // open-top bed: floor + 4 short solid walls
-    addBlock(x0, x1, y0-3, y0, w, solid, false);
-    addBlock(x0, x1, y0, y1, 2, solid, false).position.z =  w/2-1;
-    addBlock(x0, x1, y0, y1, 2, solid, false).position.z = -w/2+1;
-    addBlock(x0, x0+2, y0, y1, w, solid, false);
-    if (id==="pickup" || x1<0) addBlock(x1-2, x1, y0, y1, w, solid, false);   // trailer rear stays open (ramp side)
+  const wheel = (x, r, z, w=9) => {                             // tire + rim + 5 spokes + hub
+    const wg = new THREE.Group(), tube = r*0.26;
+    wg.add(new THREE.Mesh(new THREE.TorusGeometry(r-tube, tube, 12, 30), new THREE.MeshPhongMaterial({ color:0x15161a, shininess:12 })));
+    const rimM = new THREE.MeshPhongMaterial({ color:0xb8bec9, shininess:90 });
+    const rim = new THREE.Mesh(new THREE.CylinderGeometry(r*0.66, r*0.66, w*0.55, 28, 1, true), rimM); rim.rotation.x = Math.PI/2; wg.add(rim);
+    for (let i=0; i<5; i++){ const sp = new THREE.Mesh(new THREE.BoxGeometry(r*1.25, r*0.16, 1.2), rimM); sp.rotation.z = i*Math.PI*2/5; wg.add(sp); }
+    const hub = new THREE.Mesh(new THREE.CylinderGeometry(r*0.2, r*0.2, w*0.6, 16), metal); hub.rotation.x = Math.PI/2; wg.add(hub);
+    wg.position.set(x, r, z); g.add(wg);
+  };
+  const lights = (S, w) => {
+    const hl = new THREE.MeshBasicMaterial({ color:0xfff4d1 }), tl = new THREE.MeshBasicMaterial({ color:0xd62828 });
+    for (const s of [-1,1]){
+      add(new THREE.BoxGeometry(2, 4, 9), hl, S.head[0], S.head[1], s*(w/2-9));
+      add(new THREE.BoxGeometry(2, 9, 4), tl, S.tail[0], S.tail[1], s*(w/2-4));
+      add(new THREE.BoxGeometry(5, 5, 3), dark, S.mirror[0], S.mirror[1]+3, s*(w/2+2.5));
+    }
+  };
+  const vehicleBody = (S, dx=0) => {                            // shared by every vehicle (and the trailer's tow pickup)
+    const w = S.w, xs = S.body.map(p => p[0]), xmin = Math.min(...xs), xmax = Math.max(...xs);
+    const geo = extrude(profileShape(S.body, S.wheels.filter(([x]) => x > xmin && x < xmax)), w);
+    add(geo, bodyMat, dx); outline(geo, dx);
+    const side = new THREE.Shape(S.side.map(([x,y]) => new THREE.Vector2(x, y)));
+    for (const s of [-1,1]) add(extrude(side, 1.2, 0), glassMat, dx, 0, s*(w/2+0.4));
+    for (const [p,q] of S.panes) pane([p[0]+dx,p[1]], [q[0]+dx,q[1]], w-6);
+    const xF = xmin+dx, xR = (S.bed ? S.bed.x1 : S.box ? S.box.x1 : xmax)+dx, yb = S.body[0][1];
+    block(xF-3, xF+5, yb-3, yb+7, w-6, dark);                   // bumpers
+    block(xR-5, xR+3, yb-3, yb+7, w-6, dark);
+    add(new THREE.BoxGeometry(1, 8, w*0.42), dark, xF-1.5, S.head[1]-1, 0);   // grille
+    lights({ head:[S.head[0]+dx, S.head[1]], tail:[S.tail[0]+dx, S.tail[1]], mirror:[S.mirror[0]+dx, S.mirror[1]] }, w);
+    for (const [x, r] of S.wheels) for (const s of [-1,1]){
+      wheel(x+dx, r, s*(S.track/2));
+      if (S.dual && x === S.wheels[S.wheels.length-1][0]) wheel(x+dx, r, s*(S.track/2-9));
+    }
+    block(xF+20, xR-20, yb-1, yb+1, w*0.5, dark);               // undercarriage
+  };
+  if (S.trailer){
+    const T = VEHICLE_SHAPES.pickup; vehicleBody(T, S.tow); pickupBed(T, S.tow);
+    const D = S.deck, y0 = S.cargo.floor;
+    block(D.x0, D.x1, y0-3, y0, D.w, new THREE.MeshPhongMaterial({ color:0x8a6a45, shininess:10 }));   // wood deck
+    block(D.x0, D.x1, y0-6, y0-3, 6, dark, D.w/2-3); block(D.x0, D.x1, y0-6, y0-3, 6, dark, -D.w/2+3);
+    const rail = (x0,y0r,z0,x1,y1r,z1,r=1.2) => { const a = new THREE.Vector3(x0,y0r,z0), b = new THREE.Vector3(x1,y1r,z1), len = a.distanceTo(b);
+      const m = add(new THREE.CylinderGeometry(r, r, len, 10), metal); m.position.copy(a).add(b).multiplyScalar(0.5); m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), b.clone().sub(a).normalize()); };
+    for (const s of [-1,1]){
+      const z = s*(D.w/2-1); rail(D.x0, y0+18, z, D.x1, y0+18, z);
+      for (let x=D.x0; x<=D.x1; x+=D.x1/6) rail(x, y0, z, x, y0+18, z, 0.9);
+      const fender = add(new THREE.CylinderGeometry(S.axle[1]+3, S.axle[1]+3, 9, 20, 1, true, -Math.PI/2, Math.PI), dark);
+      fender.rotation.x = -Math.PI/2; fender.position.set(S.axle[0], S.axle[1], s*(S.track/2)); fender.material.side = THREE.DoubleSide;
+      wheel(S.axle[0], S.axle[1], s*(S.track/2));
+      rail(D.x0, y0-3, s*28, S.tow+92, 20, 0, 1.6);                 // A-frame tongue
+      add(new THREE.BoxGeometry(2, 9, 4), new THREE.MeshBasicMaterial({ color:0xd62828 }), D.x1, y0+4, s*(D.w/2-3));
+    }
+    rail(D.x0, y0+18, -D.w/2, D.x0, y0+18, D.w/2);                  // front rail
+    rail(D.x0, y0+18, -D.w/2+1, D.x0, y0, -D.w/2+1, 0.9);
+    add(new THREE.CylinderGeometry(1.6, 1.6, 18, 10), metal, S.tow+100, 11, 0);   // jack stand
+  } else {
+    vehicleBody(S);
+    if (S.bed) pickupBed(S, 0);
+    if (S.box){
+      const B = S.box, geo = extrude(profileShape([[B.x0,B.y0],[B.x0,B.y1],[B.x1,B.y1],[B.x1,B.y0]], []), B.w, 2);
+      add(geo, bodyMat); outline(geo);
+      block(B.x0+4, B.x1, 20, B.y0, 34, dark);                     // frame rails under the box
+      const door = add(new THREE.CylinderGeometry(5.5, 5.5, B.w-6, 20), new THREE.MeshPhongMaterial({ color:0xe9ebef, shininess:40 }), B.x1-4, B.y1-8, 0);
+      door.rotation.x = Math.PI/2;                                  // roll-up door, rolled open
+      for (const s of [-1,1]) add(new THREE.BoxGeometry(B.x1-B.x0-16, 10, 0.4), new THREE.MeshBasicMaterial({ color:0x1f4bff, transparent:true, opacity:0.55 }), (B.x0+B.x1)/2, B.y0+30, s*(B.w/2+0.4));
+    }
   }
-  if (S.tongue){ addBlock(S.tongue[0], S.tongue[1], 20, 24, 4, solid, false); }
-  // cargo floor (solid) so boxes sit on something visible
-  const fl = new THREE.Mesh(new THREE.BoxGeometry(cg.L, 1.5, cg.W), new THREE.MeshLambertMaterial({ color:0x8f949c }));
-  fl.position.set(S.cargo.x0 + cg.L/2, S.cargo.floor-0.75, 0); g.add(fl);
-  if (S.rollDoor){ const d = addBlock(14, 22, 100, 114, 96, new THREE.MeshLambertMaterial({ color:0xf3f3f4 }), false); }
-  for (const [x,r] of S.wheels) for (const s of [-1,1]){
-    const t = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 9, 22), tire); t.rotation.x = Math.PI/2; t.position.set(x, r, s*S.track/2); g.add(t);
-    const h = new THREE.Mesh(new THREE.CylinderGeometry(r*0.5, r*0.5, 9.4, 16), hub); h.rotation.x = Math.PI/2; h.position.copy(t.position); g.add(h);
+  // cargo floor so boxes sit on something visible
+  const floorMat = new THREE.MeshPhongMaterial({ color:0x9aa0a8, shininess:20 });
+  add(new THREE.BoxGeometry(cg.L, 1.2, cg.W), floorMat, S.cargo.x0 + cg.L/2, S.cargo.floor-0.6, 0);
+  // soft contact shadow
+  const bb0 = new THREE.Box3().setFromObject(g), sz = bb0.getSize(new THREE.Vector3()), ctr = bb0.getCenter(new THREE.Vector3());
+  const sh = add(new THREE.PlaneGeometry(sz.x+50, sz.z+46), new THREE.MeshBasicMaterial({ map:shadowTex(), transparent:true, depthWrite:false }), ctr.x, 0.4, 0);
+  sh.rotation.x = -Math.PI/2;
+  return { group:g, S, cg, bb:new THREE.Box3().setFromObject(g) };
+
+  function pickupBed(T, dx){                                    // open bed: side panels with wheel arch, front wall, tailgate
+    const B = T.bed, panel = profileShape([[B.x0,B.y0],[B.x0,B.y1],[B.x1,B.y1],[B.x1,B.y0]], T.wheels.filter(w => w[0] > B.x0));
+    for (const s of [-1,1]){ const geo = extrude(panel, 2.4, 0.8); add(geo, bodyMat, dx, 0, s*(B.w/2)); outline(geo, dx, 0, s*(B.w/2)); }
+    const fw = new THREE.BoxGeometry(2.4, B.y1-T.cargo.floor, B.w); add(fw, bodyMat, B.x0+dx, (B.y1+T.cargo.floor)/2, 0); outline(fw, B.x0+dx, (B.y1+T.cargo.floor)/2, 0);
+    const tg = new THREE.BoxGeometry(2.4, B.y1-T.cargo.floor-2, B.w); add(tg, bodyMat, B.x1+dx-1, (B.y1+T.cargo.floor)/2-1, 0); outline(tg, B.x1+dx-1, (B.y1+T.cargo.floor)/2-1, 0);
+    add(new THREE.BoxGeometry(B.x1-B.x0, 1.2, B.w-2), new THREE.MeshPhongMaterial({ color:0x3a3e46 }), (B.x0+B.x1)/2+dx, T.cargo.floor-0.6, 0);
   }
-  const bb = new THREE.Box3().setFromObject(g);
-  return { group:g, S, cg, bb };
+}
+let _shadowTex = null;
+function shadowTex(){
+  if (_shadowTex) return _shadowTex;
+  const c = document.createElement("canvas"); c.width = c.height = 128;
+  const x = c.getContext("2d"), gr = x.createRadialGradient(64,64,10,64,64,64);
+  gr.addColorStop(0, "rgba(20,24,32,0.38)"); gr.addColorStop(0.6, "rgba(20,24,32,0.16)"); gr.addColorStop(1, "rgba(20,24,32,0)");
+  x.fillStyle = gr; x.fillRect(0,0,128,128);
+  return (_shadowTex = new THREE.CanvasTexture(c));
 }
 function frameCamera(){
   if (!V3.veh) return;
@@ -1138,7 +1264,7 @@ function renderVehicle3D(t, rec){
   if (V3.vehId !== id){                                         // swap vehicles: old one shrinks out, new one grows in
     const old = V3.veh; V3.veh = buildVehicle(id, cg); V3.vehId = id;
     V3.veh.group.scale.setScalar(0.6); V3.scene.add(V3.veh.group);
-    if (old) tween(450, k => old.group.scale.setScalar(1-k*0.4) || old.group.traverse(o => o.material && (o.material.transparent=true, o.material.opacity=Math.min(o.material.opacity, 1-k))), () => V3.scene.remove(old.group));
+    if (old) tween(450, k => old.group.scale.setScalar(1-k*0.4) || old.group.traverse(o => o.material && (o.material.uniforms ? (o.material.uniforms.opacity.value = 1-k) : (o.material.transparent=true, o.material.opacity=Math.min(o.material.opacity, 1-k)))), () => V3.scene.remove(old.group));
     tween(650, k => V3.veh.group.scale.setScalar(0.6+0.4*k));
   }
   const S = V3.veh.S, { placed, over } = pack3D(t.boxes, cg.L, cg.W, cg.H);
