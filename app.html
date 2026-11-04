@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Pickup & Packing Calculator</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
@@ -176,6 +177,14 @@ pre.preview{margin:14px 0 0;background:#0f1012;color:#e6e7ea;border-radius:10px;
 /* Truck */
 .truck-card .card-b{padding:12px 18px 18px}
 .truck-svg{width:100%;height:auto;display:block}
+.chk{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--ink-2);cursor:pointer}
+.chk input{accent-color:var(--accent);width:15px;height:15px}
+.v3d{position:relative;border-radius:10px;overflow:hidden;background:linear-gradient(#f7f8fa,#eceef2);touch-action:none}
+.v3d canvas{display:block;cursor:grab}
+.v3d canvas:active{cursor:grabbing}
+.v3empty{position:absolute;inset:0;display:grid;place-items:center;font-weight:700;color:#8b8e94;pointer-events:none}
+.v3reset{position:absolute;right:10px;top:10px;background:rgba(255,255,255,.9)}
+.v3tip{position:absolute;pointer-events:none;background:var(--ink);color:#fff;font-size:12px;padding:6px 9px;border-radius:8px;max-width:240px;box-shadow:var(--shadow)}
 .bx{transition:transform .7s cubic-bezier(.2,.85,.25,1.08),opacity .4s}
 .rec{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:12px;background:var(--ink);color:#fff;margin-top:6px}
 .rec .ic{width:56px;height:34px;flex:none;color:#fff}
@@ -299,7 +308,9 @@ pre.preview{margin:14px 0 0;background:#0f1012;color:#e6e7ea;border-radius:10px;
           <div class="field"><label for="orderNo" class="muted">Order #</label><input id="orderNo" placeholder="Optional"></div>
           <div class="sp"></div>
           <button class="btn" id="copyBtn">Copy packing list</button>
-          <button class="btn primary" id="printBtn">Print / Save as PDF</button>
+          <button class="btn" id="printBtn">Print</button>
+          <label class="chk"><input type="checkbox" id="pdfImg" checked> Include load image</label>
+          <button class="btn primary" id="pdfBtn">Download PDF</button>
         </div>
         <pre class="preview" id="plPreview"></pre>
       </div>
@@ -310,7 +321,13 @@ pre.preview{margin:14px 0 0;background:#0f1012;color:#e6e7ea;border-radius:10px;
     <section class="card truck-card">
       <div class="card-h"><h2>Load preview</h2><div class="sp"></div><span class="muted" id="fillLabel" style="font-size:12px;font-weight:600"></span></div>
       <div class="card-b">
+        <div class="v3d" id="v3d" hidden>
+          <div class="v3empty" id="v3empty">Add products to start loading</div>
+          <button class="btn sm v3reset" id="v3reset" type="button">Reset view</button>
+          <div class="v3tip" id="v3tip" hidden></div>
+        </div>
         <svg class="truck-svg" id="truck" viewBox="0 0 600 470" role="img" aria-label="Rear view of an open box truck showing the load"></svg>
+        <p class="note" id="v3note" hidden>3D preview unavailable on this device — showing a simplified view.</p>
         <div id="recBox"></div>
         <div class="bars" id="bars"></div>
         <div id="heavyBox"></div>
@@ -381,13 +398,15 @@ const VEHICLE_CONFIG = {
   lengthClearanceIn: 4,      // longest box must be at least this much shorter than the cargo floor
   heavyBoxLb: 150,           // boxes above this get the "Heavy — staff loading assist" tag
   vehicles: [                // smallest to largest; the first one that passes every check is recommended
-    { id:"car",    name:"Car",          detail:"Sedan trunk + folded rear seat", payloadLb:850,  cargoLengthIn:60,  openingWidthIn:38, openingHeightIn:16, volumeCuFt:16  },
-    { id:"suv",    name:"SUV",          detail:"Rear seats folded",              payloadLb:1100, cargoLengthIn:70,  openingWidthIn:42, openingHeightIn:28, volumeCuFt:55  },
-    { id:"pickup", name:"Pickup Truck", detail:"Standard ~6.5 ft bed, tailgate up", payloadLb:1500, cargoLengthIn:78, openingWidthIn:48, openingHeightIn:40, volumeCuFt:55  },
-    { id:"van",    name:"Cargo Van",    detail:"Full-size, rear doors",          payloadLb:3000, cargoLengthIn:120, openingWidthIn:49, openingHeightIn:50, volumeCuFt:240 },
-    { id:"box",    name:"Box Truck",    detail:"U-Haul style, 10–15 ft",         payloadLb:2800, cargoLengthIn:118, openingWidthIn:72, openingHeightIn:68, volumeCuFt:380 },
+    { id:"car",    name:"Car",          detail:"Sedan trunk + folded rear seat", payloadLb:850,  cargoLengthIn:60,  openingWidthIn:38, openingHeightIn:16, volumeCuFt:16,  cargoWidthIn:40, cargoHeightIn:18 },
+    { id:"suv",    name:"SUV",          detail:"Rear seats folded",              payloadLb:1100, cargoLengthIn:70,  openingWidthIn:42, openingHeightIn:28, volumeCuFt:55,  cargoWidthIn:44, cargoHeightIn:30 },
+    { id:"pickup", name:"Pickup Truck", detail:"Standard ~6.5 ft bed, tailgate up", payloadLb:1500, cargoLengthIn:78, openingWidthIn:48, openingHeightIn:40, volumeCuFt:55,  cargoWidthIn:50, cargoHeightIn:40 },
+    { id:"van",    name:"Cargo Van",    detail:"Full-size, rear doors",          payloadLb:3000, cargoLengthIn:120, openingWidthIn:49, openingHeightIn:50, volumeCuFt:240, cargoWidthIn:52, cargoHeightIn:52 },
+    { id:"box",    name:"Box Truck",    detail:"U-Haul style, 10–15 ft",         payloadLb:2800, cargoLengthIn:118, openingWidthIn:72, openingHeightIn:68, volumeCuFt:380, cargoWidthIn:90, cargoHeightIn:80 },
   ],
   fallback: { id:"trailer", name:"Trailer", message:"Trailer or multiple trips — contact the warehouse team." },
+  // cargoWidthIn / cargoHeightIn above and the trailer below are only used to draw the 3D load preview.
+  visualOnly: { trailer: { name:"Trailer", cargoLengthIn:144, cargoWidthIn:72, cargoHeightIn:60 } },  // 6 x 12 ft utility trailer
 };
 
 /* =====================================================================
@@ -944,6 +963,219 @@ function renderTruck(t, rec){
   const pct = t.count ? t.vol/cap*100 : 0;
   $("#fillLabel").textContent = t.count ? `≈ ${Math.round(pct)}% of ${veh.name} space · dashed line = safe fill` : "";
 }
+/* ---------- 3D load preview (three.js) ----------
+   Shows the recommended vehicle in 3D and packs every box into its cargo area to scale (1 unit = 1 inch).
+   Car → SUV → Pickup → Cargo Van → Box Truck, or a trailer when the load is bigger than the box truck.
+   Falls back to the SVG truck above if WebGL or three.js isn't available. */
+const V3 = { ok:false };
+// Vehicle shapes in inches. Front of the vehicle points to −x; the cargo opening faces +x (toward the camera).
+// shells: see-through body blocks [x0,x1,y0,y1,width]; walls: solid low walls (pickup bed, trailer rails);
+// cargo: where boxes are packed (x0 = front of the cargo area, floor height, L × W × H to pack into).
+const VEHICLE_SHAPES = {
+  car:    { shells:[[-112,62,12,34,70],[-58,36,34,54,62]], wheels:[[-80,13],[38,13]], track:60, cargo:{x0:2,  floor:22} },
+  suv:    { shells:[[-118,74,12,44,76],[-74,74,44,72,72]], wheels:[[-86,15],[44,15]], track:64, cargo:{x0:2,  floor:26} },
+  pickup: { shells:[[-140,-12,14,46,76],[-86,-12,46,76,72]], walls:[[-8,82,30,52,72]], wheels:[[-108,16],[52,16]], track:64, cargo:{x0:-4, floor:32} },
+  van:    { shells:[[-172,-142,14,52,78],[-142,124,14,100,82]], wheels:[[-134,16],[92,16]], track:68, cargo:{x0:2,  floor:24} },
+  box:    { shells:[[-182,-108,16,62,86],[-166,-108,62,96,84],[-104,22,30,114,98]], wheels:[[-156,18],[-16,18]], track:76, cargo:{x0:-100, floor:32}, rollDoor:true },
+  trailer:{ shells:[[-372,-244,14,46,76],[-318,-244,46,76,72]], walls:[[-238,-160,30,50,72],[0,146,24,40,80]], wheels:[[-340,16],[-182,16],[72,14]], track:64, cargo:{x0:1, floor:24}, tongue:[-160,0] },
+};
+function cargoDims(v){
+  if (v.id==="trailer") return { L:VEHICLE_CONFIG.visualOnly.trailer.cargoLengthIn, W:VEHICLE_CONFIG.visualOnly.trailer.cargoWidthIn, H:VEHICLE_CONFIG.visualOnly.trailer.cargoHeightIn };
+  return { L:v.cargoLengthIn, W:v.cargoWidthIn, H:v.cargoHeightIn };
+}
+// Heightmap packer on a 4-inch floor grid: biggest boxes first, lying flat where possible,
+// each placed where it ends up lowest, then furthest forward (fills bottom-up, front-to-back).
+function pack3D(boxes, L, W, H){
+  const G = 4, nx = Math.max(1, Math.floor(L/G)), ny = Math.max(1, Math.floor(W/G));
+  const hm = new Float32Array(nx*ny), placed=[], over=[];
+  const list = boxes.slice(0, 400).map(b => ({ b, d:[b.L,b.W,b.H].sort((a,c)=>c-a) })).sort((a,c) => c.d[0]*c.d[1]*c.d[2] - a.d[0]*a.d[1]*a.d[2]);
+  for (const it of list){
+    const [a,b2,c] = it.d;
+    const ors = [[a,b2,c],[b2,a,c],[a,c,b2],[c,a,b2],[b2,c,a],[c,b2,a]];   // flattest first
+    let best=null;
+    for (const [dx,dy,dz] of ors){
+      const cx = Math.ceil(dx/G-1e-6), cy = Math.ceil(dy/G-1e-6);
+      if (cx>nx || cy>ny || dz>H) continue;
+      for (let x=0; x<=nx-cx; x++) for (let y=0; y<=ny-cy; y++){
+        let base=0; for (let i=x;i<x+cx;i++){ const row=i*ny; for (let j=y;j<y+cy;j++) if (hm[row+j]>base) base=hm[row+j]; }
+        const top = base+dz; if (top>H+1e-6) continue;
+        if (!best || top<best.top-1e-6 || (Math.abs(top-best.top)<1e-6 && (x<best.x || (x===best.x && y<best.y)))) best={x,y,cx,cy,dx,dy,dz,base,top};
+      }
+      if (best && best.base===0) break;                                     // found a floor spot lying flat
+    }
+    if (!best){ over.push(it.b); continue; }
+    for (let i=best.x;i<best.x+best.cx;i++) for (let j=best.y;j<best.y+best.cy;j++) hm[i*ny+j]=best.top;
+    placed.push({ b:it.b, x:best.x*G, y:best.y*G, z:best.base, dx:best.dx, dy:best.dy, dz:best.dz });
+  }
+  return { placed, over, hidden: Math.max(0, boxes.length-400) };
+}
+function initV3(){
+  const host = $("#v3d");
+  if (!window.THREE || !host) return false;
+  let renderer;
+  try { renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true, preserveDrawingBuffer:true }); } catch { return false; }
+  if (!renderer.getContext()) return false;
+  renderer.setPixelRatio(Math.min(2, window.devicePixelRatio||1));
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  host.prepend(renderer.domElement);
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(32, 1, 5, 8000);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0xb9bcc4, 0.95));
+  const sun = new THREE.DirectionalLight(0xffffff, 0.75); sun.position.set(300, 500, 260); scene.add(sun);
+  const ground = new THREE.Mesh(new THREE.CircleGeometry(900, 48), new THREE.MeshLambertMaterial({ color:0xeef0f3 }));
+  ground.rotation.x = -Math.PI/2; scene.add(ground);
+  const grid = new THREE.GridHelper(1600, 40, 0xd9dce1, 0xe4e6ea); grid.position.y = 0.2; scene.add(grid);
+  // 6 ft person for scale
+  const person = new THREE.Group(), pm = new THREE.MeshLambertMaterial({ color:0x9aa0aa });
+  const torso = new THREE.Mesh(new THREE.CylinderGeometry(7, 6, 44, 16), pm); torso.position.y = 31; person.add(torso);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(5.2, 16, 12), pm); head.position.y = 66; person.add(head);
+  for (const s of [-1,1]){ const leg = new THREE.Mesh(new THREE.CylinderGeometry(3, 2.6, 30, 10), pm); leg.position.set(0, 15, s*3.6); person.add(leg); }
+  scene.add(person);
+  Object.assign(V3, { ok:true, host, renderer, scene, camera, person, veh:null, vehId:null, boxes:new Map(), load:new THREE.Group(),
+    tweens:[], theta:0.62, phi:1.08, radius:600, target:new THREE.Vector3(), userView:false, raf:0 });
+  scene.add(V3.load);
+  // drag to rotate, wheel / pinch to zoom
+  const el = renderer.domElement; let drag=null, pinch=0;
+  el.addEventListener("pointerdown", e => { drag = { x:e.clientX, y:e.clientY }; el.setPointerCapture(e.pointerId); });
+  el.addEventListener("pointermove", e => {
+    if (drag){ V3.theta -= (e.clientX-drag.x)*0.008; V3.phi = Math.min(1.45, Math.max(0.25, V3.phi - (e.clientY-drag.y)*0.006)); drag = { x:e.clientX, y:e.clientY }; V3.userView = true; kick(); }
+    else hoverBox(e);
+  });
+  el.addEventListener("pointerup", () => { drag=null; });
+  el.addEventListener("pointerleave", () => { drag=null; $("#v3tip").hidden = true; });
+  el.addEventListener("wheel", e => { e.preventDefault(); V3.radius = Math.min(V3.fit*2.2, Math.max(V3.fit*0.45, V3.radius*(e.deltaY>0?1.1:0.9))); V3.userView = true; kick(); }, { passive:false });
+  el.addEventListener("touchmove", e => { if (e.touches.length===2){ const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY); if (pinch) V3.radius = Math.min(V3.fit*2.2, Math.max(V3.fit*0.45, V3.radius*pinch/d)); pinch=d; kick(); } }, { passive:true });
+  el.addEventListener("touchend", () => { pinch=0; });
+  $("#v3reset").addEventListener("click", () => { V3.userView=false; frameCamera(); kick(); });
+  new ResizeObserver(() => { sizeV3(); kick(); }).observe(host);
+  sizeV3();
+  return true;
+}
+function sizeV3(){
+  const w = V3.host.clientWidth || 600, h = Math.round(w*0.66);
+  V3.renderer.setSize(w, h, false); V3.renderer.domElement.style.width = w+"px"; V3.renderer.domElement.style.height = h+"px";
+  V3.camera.aspect = w/h; V3.camera.updateProjectionMatrix();
+}
+const raycaster = window.THREE ? new THREE.Raycaster() : null;
+function hoverBox(e){
+  const tip = $("#v3tip"), r = V3.renderer.domElement.getBoundingClientRect();
+  const p = new THREE.Vector2(((e.clientX-r.left)/r.width)*2-1, -((e.clientY-r.top)/r.height)*2+1);
+  raycaster.setFromCamera(p, V3.camera);
+  const hit = raycaster.intersectObjects([...V3.boxes.values()].map(m=>m.mesh), false)[0];
+  if (!hit){ tip.hidden = true; return; }
+  const b = hit.object.userData.b;
+  tip.innerHTML = `<b>${esc(b.sku)}</b><br>${esc(b.name)}<br>${fD(b.L)} × ${fD(b.W)} × ${fD(b.H)} ${state.d} · ${fW(b.wt)} ${state.w}`;
+  tip.style.left = (e.clientX-r.left+12)+"px"; tip.style.top = (e.clientY-r.top+12)+"px"; tip.hidden = false;
+}
+function shellMat(){ return new THREE.MeshPhongMaterial({ color:0xc9d4ee, transparent:true, opacity:0.3, depthWrite:false, side:THREE.DoubleSide, shininess:80 }); }
+function buildVehicle(id, cg){
+  const S = VEHICLE_SHAPES[id], g = new THREE.Group(), edge = new THREE.LineBasicMaterial({ color:0x1f4bff, transparent:true, opacity:0.75 });
+  const solid = new THREE.MeshLambertMaterial({ color:0x2b2f38 }), tire = new THREE.MeshLambertMaterial({ color:0x111214 }), hub = new THREE.MeshLambertMaterial({ color:0xc9ccd2 });
+  const addBlock = (x0,x1,y0,y1,w,mat,lines=true) => {
+    const geo = new THREE.BoxGeometry(x1-x0, y1-y0, w), m = new THREE.Mesh(geo, mat); m.position.set((x0+x1)/2, (y0+y1)/2, 0); g.add(m);
+    if (lines){ const l = new THREE.LineSegments(new THREE.EdgesGeometry(geo), edge); l.position.copy(m.position); g.add(l); }
+    return m;
+  };
+  for (const s of S.shells) addBlock(...s, shellMat());
+  for (const [x0,x1,y0,y1,w] of (S.walls||[])){
+    // open-top bed: floor + 4 short solid walls
+    addBlock(x0, x1, y0-3, y0, w, solid, false);
+    addBlock(x0, x1, y0, y1, 2, solid, false).position.z =  w/2-1;
+    addBlock(x0, x1, y0, y1, 2, solid, false).position.z = -w/2+1;
+    addBlock(x0, x0+2, y0, y1, w, solid, false);
+    if (id==="pickup" || x1<0) addBlock(x1-2, x1, y0, y1, w, solid, false);   // trailer rear stays open (ramp side)
+  }
+  if (S.tongue){ addBlock(S.tongue[0], S.tongue[1], 20, 24, 4, solid, false); }
+  // cargo floor (solid) so boxes sit on something visible
+  const fl = new THREE.Mesh(new THREE.BoxGeometry(cg.L, 1.5, cg.W), new THREE.MeshLambertMaterial({ color:0x8f949c }));
+  fl.position.set(S.cargo.x0 + cg.L/2, S.cargo.floor-0.75, 0); g.add(fl);
+  if (S.rollDoor){ const d = addBlock(14, 22, 100, 114, 96, new THREE.MeshLambertMaterial({ color:0xf3f3f4 }), false); }
+  for (const [x,r] of S.wheels) for (const s of [-1,1]){
+    const t = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 9, 22), tire); t.rotation.x = Math.PI/2; t.position.set(x, r, s*S.track/2); g.add(t);
+    const h = new THREE.Mesh(new THREE.CylinderGeometry(r*0.5, r*0.5, 9.4, 16), hub); h.rotation.x = Math.PI/2; h.position.copy(t.position); g.add(h);
+  }
+  const bb = new THREE.Box3().setFromObject(g);
+  return { group:g, S, cg, bb };
+}
+function frameCamera(){
+  if (!V3.veh) return;
+  const bb = V3.veh.bb.clone(); if (V3.extra) bb.union(V3.extra);
+  bb.expandByPoint(V3.person.position.clone().add(new THREE.Vector3(0, 72, 0)));       // keep the 6 ft person in frame
+  const s = bb.getBoundingSphere(new THREE.Sphere());
+  const fv = V3.camera.fov*Math.PI/180, fh = 2*Math.atan(Math.tan(fv/2)*V3.camera.aspect);
+  V3.fit = s.radius / Math.sin(Math.min(fv, fh)/2) * 0.92;
+  V3.target.set(s.center.x, s.center.y*0.8, s.center.z);
+  if (!V3.userView){ V3.radius = V3.fit; V3.theta = 0.62; V3.phi = 1.08; }
+}
+function placeCamera(){
+  const r = V3.radius, t = V3.target;
+  V3.camera.position.set(t.x + r*Math.sin(V3.phi)*Math.cos(V3.theta), t.y + r*Math.cos(V3.phi), t.z + r*Math.sin(V3.phi)*Math.sin(V3.theta));
+  V3.camera.lookAt(t);
+}
+const ease = k => 1-Math.pow(1-k, 3);
+function tween(ms, fn, done){ V3.tweens.push({ t0:performance.now(), ms, fn, done }); kick(); }
+function kick(){ if (!V3.raf) V3.raf = requestAnimationFrame(loop); }
+function loop(now){
+  V3.raf = 0;
+  V3.tweens = V3.tweens.filter(tw => { const k = Math.min(1, (now-tw.t0)/tw.ms); tw.fn(ease(k)); if (k>=1){ tw.done && tw.done(); return false; } return true; });
+  placeCamera(); V3.renderer.render(V3.scene, V3.camera);
+  if (V3.tweens.length) kick();
+}
+function boxMesh(b){
+  const fill = new THREE.Color(SHADES[hash(b.sku)%SHADES.length]);
+  const mat = new THREE.MeshLambertMaterial({ color:fill });
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(1,1,1), mat);
+  const edges = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1,1,1)), new THREE.LineBasicMaterial({ color:0x7a5a30 }));
+  const tape = new THREE.Mesh(new THREE.BoxGeometry(1.002, 1.004, 0.16), new THREE.MeshLambertMaterial({ color: b.wt>VEHICLE_CONFIG.heavyBoxLb ? 0x111214 : 0xe6cfa5 }));
+  const grp = new THREE.Group(); grp.add(mesh); grp.add(edges); grp.add(tape);
+  mesh.userData.b = b;
+  return { grp, mesh };
+}
+function renderVehicle3D(t, rec){
+  const C = VEHICLE_CONFIG, id = !t.count ? "car" : rec.rec ? rec.rec.id : "trailer";
+  const v = id==="trailer" ? { id:"trailer", name:"Trailer" } : C.vehicles.find(x => x.id===id);
+  const cg = cargoDims(v);
+  if (V3.vehId !== id){                                         // swap vehicles: old one shrinks out, new one grows in
+    const old = V3.veh; V3.veh = buildVehicle(id, cg); V3.vehId = id;
+    V3.veh.group.scale.setScalar(0.6); V3.scene.add(V3.veh.group);
+    if (old) tween(450, k => old.group.scale.setScalar(1-k*0.4) || old.group.traverse(o => o.material && (o.material.transparent=true, o.material.opacity=Math.min(o.material.opacity, 1-k))), () => V3.scene.remove(old.group));
+    tween(650, k => V3.veh.group.scale.setScalar(0.6+0.4*k));
+  }
+  const S = V3.veh.S, { placed, over } = pack3D(t.boxes, cg.L, cg.W, cg.H);
+  const seen = new Set(), rearX = S.cargo.x0 + cg.L;
+  const put = (b, cx, cy, cz, dx, dy, dz) => {
+    seen.add(b.id);
+    let m = V3.boxes.get(b.id);
+    if (!m){ m = boxMesh(b); m.from = new THREE.Vector3(cx, cy+160, cz); m.grp.position.copy(m.from); V3.load.add(m.grp); V3.boxes.set(b.id, m); }
+    const from = m.grp.position.clone(), to = new THREE.Vector3(cx, cy, cz);
+    m.grp.scale.set(dx, dz, dy);
+    tween(700, k => { m.grp.position.lerpVectors(from, to, k); });
+  };
+  for (const p of placed) put(p.b, S.cargo.x0 + p.x + p.dx/2, S.cargo.floor + p.z + p.dz/2, -cg.W/2 + p.y + p.dy/2, p.dx, p.dy, p.dz);
+  // boxes that don't fit: stacked on the ground behind the vehicle
+  let ox = rearX + 40, oz = -cg.W/2, rowD = 0;
+  for (const b of over){
+    const d = [b.L,b.W,b.H].sort((a,c)=>c-a);
+    if (oz + d[1] > cg.W/2 + 80){ oz = -cg.W/2; ox += rowD + 12; rowD = 0; }
+    put(b, ox + d[0]/2, d[2]/2, oz + d[1]/2, d[0], d[1], d[2]); oz += d[1] + 8; rowD = Math.max(rowD, d[0]);
+  }
+  for (const [k, m] of V3.boxes) if (!seen.has(k)){ V3.load.remove(m.grp); V3.boxes.delete(k); }
+  V3.extra = over.length ? new THREE.Box3(new THREE.Vector3(rearX, 0, -cg.W/2), new THREE.Vector3(ox + rowD, 60, cg.W/2 + 80)) : null;
+  V3.person.position.set(V3.veh.bb.min.x - 26, 0, 30);
+  frameCamera(); kick();
+  const cap = (v.volumeCuFt || (cg.L*cg.W*cg.H/1728)) * 1728, pct = t.count ? t.vol/cap*100 : 0;
+  $("#fillLabel").textContent = t.count ? `≈ ${Math.round(pct)}% of ${v.name} space${over.length ? ` · ${over.length} won't fit` : ""} · drag to rotate` : "Drag to rotate";
+  $("#v3empty").hidden = !!t.count;
+}
+function renderLoad(t, r){
+  if (V3.ok === false && !V3.tried){
+    V3.tried = true;
+    V3.ok = !/[?&]no3d\b/.test(location.search) && initV3();   // ?no3d forces the simple view
+    $("#v3d").hidden = !V3.ok; $("#truck").hidden = V3.ok; $("#v3note").hidden = V3.ok;
+  }
+  if (V3.ok) renderVehicle3D(t, r); else renderTruck(t, r);
+}
+
 const ICONS = {
   car:`<svg viewBox="0 0 64 36" fill="currentColor"><path d="M6 24c0-3 2-5 5-6l7-7c2-2 4-3 7-3h13c3 0 5 1 7 3l6 6 6 1c2 1 3 3 3 5v4H6z"/><circle cx="18" cy="28" r="5" fill="#0b0b0c" stroke="currentColor" stroke-width="3"/><circle cx="48" cy="28" r="5" fill="#0b0b0c" stroke="currentColor" stroke-width="3"/></svg>`,
   suv:`<svg viewBox="0 0 64 36" fill="currentColor"><path d="M4 26V14c0-2 1-4 3-5l4-3h32c2 0 3 1 4 2l6 7 5 1c2 0 3 2 3 4v6z"/><circle cx="17" cy="28" r="5" fill="#0b0b0c" stroke="currentColor" stroke-width="3"/><circle cx="48" cy="28" r="5" fill="#0b0b0c" stroke="currentColor" stroke-width="3"/></svg>`,
@@ -1009,6 +1241,90 @@ function buildPrint(t, r){
     ${t.bad?`<p>${t.bad} ${t.bad===1?"box":"boxes"} without dimensions on file are not included in totals.</p>`:""}
     <div class="tot">${esc(tot)}</div>
     <div class="veh"><b>Vehicle recommended:</b> ${esc(veh)}${t.heavy?`<br><b>Heavy boxes:</b> ${t.heavy} over ${fW(VEHICLE_CONFIG.heavyBoxLb)} ${W} — staff loading assist`:""}</div>`;
+}
+
+/* ---------- Download PDF (jsPDF, loaded on first use) ---------- */
+const JSPDF_URL = "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
+let jspdfReady = null;
+function loadJsPdf(){
+  if (!jspdfReady) jspdfReady = new Promise((ok, fail) => {
+    const s = document.createElement("script"); s.src = JSPDF_URL;
+    s.onload = () => ok(window.jspdf.jsPDF);
+    s.onerror = () => { jspdfReady = null; fail(new Error("Couldn't load the PDF maker. Check your connection and try again.")); };
+    document.head.appendChild(s);
+  });
+  return jspdfReady;
+}
+// Any image URL (incl. SVG data URIs) → JPEG data URL (white background) plus its size, via a canvas.
+function toPng(src, w, h){
+  return new Promise((ok, fail) => {
+    const img = new Image();
+    img.onload = () => { const c = document.createElement("canvas"); c.width = w || img.naturalWidth || 600; c.height = h || img.naturalHeight || 400;
+      const x = c.getContext("2d"); x.fillStyle = "#fff"; x.fillRect(0,0,c.width,c.height); x.drawImage(img, 0, 0, c.width, c.height); ok({ data:c.toDataURL("image/jpeg", 0.88), w:c.width, h:c.height }); };
+    img.onerror = () => fail(new Error("image"));
+    img.src = src;
+  });
+}
+async function loadImage(){
+  if (V3.ok){                                                  // fresh frame of the 3D view, on a white background
+    V3.tweens.forEach(tw => { tw.fn(1); tw.done && tw.done(); }); V3.tweens = [];   // finish any drop/swap animation first
+    placeCamera(); V3.renderer.setClearColor(0xffffff, 1); V3.renderer.render(V3.scene, V3.camera);
+    const c = V3.renderer.domElement, data = c.toDataURL("image/jpeg", 0.85); V3.renderer.setClearColor(0x000000, 0); kick();
+    return { data, w:c.width, h:c.height };
+  }
+  const svg = $("#truck"); if (!svg.innerHTML) return null;
+  const xml = new XMLSerializer().serializeToString(svg).replace(/var\(--accent\)/g, "#1f4bff");
+  return toPng("data:image/svg+xml;charset=utf-8," + encodeURIComponent(xml), 1200, 940);
+}
+async function downloadPdf(){
+  const t = compute(), r = recommend(t), withImg = $("#pdfImg").checked, btn = $("#pdfBtn");
+  if (!state.lines.length){ toast("Add products first"); return; }
+  btn.disabled = true; const label = btn.textContent; btn.textContent = "Preparing…";
+  try {
+    const jsPDF = await loadJsPdf(), doc = new jsPDF({ unit:"pt", format:"letter" });
+    const PW = 612, PH = 792, M = 40, U = state.d, W = state.w;
+    const { out, tot } = packLines(t);
+    let y = M;
+    try { const logo = await toPng(LOGO_BLACK, 448, 80); doc.addImage(logo.data, "JPEG", M, y, 140, 25); } catch {}
+    doc.setFont("helvetica","bold"); doc.setFontSize(18); doc.text("Packing List", M, y+48);
+    doc.setFont("helvetica","normal"); doc.setFontSize(10);
+    const today = new Date().toLocaleDateString(undefined,{year:"numeric",month:"long",day:"numeric"});
+    if (state.orderNo) doc.text(`Order # ${state.orderNo}`, PW-M, y+30, { align:"right" });
+    doc.text(today, PW-M, y+46, { align:"right" });
+    y += 58; doc.setLineWidth(1.2); doc.line(M, y, PW-M, y); y += 16;
+    // vehicle summary
+    const veh = r.rec ? r.rec.name : `${VEHICLE_CONFIG.fallback.name} — ${VEHICLE_CONFIG.fallback.message}`;
+    doc.setFont("helvetica","bold"); doc.setFontSize(11); doc.text(`Vehicle recommended: ${veh}`, M, y); y += 14;
+    doc.setFont("helvetica","normal"); doc.setFontSize(9.5);
+    doc.text(`${t.count} boxes · ${fW(t.weight)} ${W} · ${fV(t.vol)} · longest box ${t.longest ? fD(t.longest)+" "+U : "—"}`, M, y); y += 13;
+    if (t.heavy){ doc.text(`Heavy boxes: ${t.heavy} over ${fW(VEHICLE_CONFIG.heavyBoxLb)} ${W} — staff loading assist`, M, y); y += 13; }
+    if (withImg){
+      const img = await loadImage().catch(() => null);
+      if (img){ const iw = PW-2*M, ih = Math.min(230, iw*img.h/img.w), iw2 = ih*img.w/img.h; y += 4; doc.addImage(img.data, "JPEG", M + (iw-iw2)/2, y, iw2, ih); y += ih + 12; }
+    }
+    // table
+    const cols = [{ h:"SKU", w:110 }, { h:"Product", w:205 }, { h:"Qty", w:35, r:1 }, { h:`L x W x H (${U})`, w:112 }, { h:`Wt/box (${W})`, w:70, r:1 }];
+    const head = () => { doc.setFont("helvetica","bold"); doc.setFontSize(8.5); let x = M; for (const c of cols){ doc.text(c.h, c.r ? x+c.w-4 : x, y, c.r ? { align:"right" } : undefined); x += c.w; } y += 4; doc.setLineWidth(0.8); doc.line(M, y, PW-M, y); y += 11; doc.setFont("helvetica","normal"); };
+    const room = h => { if (y + h > PH - M){ doc.addPage(); y = M; head(); } };
+    y += 6; head();
+    for (const o of out){
+      if (o.type==="group"){ room(20); y += 4; doc.setFont("helvetica","bold"); doc.setFontSize(9); const ln = doc.splitTextToSize(o.text, PW-2*M); doc.text(ln, M, y); y += 11*ln.length; doc.setFont("helvetica","normal"); continue; }
+      doc.setFontSize(8.5);
+      const b = o.b, name = doc.splitTextToSize(b.name, cols[1].w-8), h = Math.max(1, name.length)*10 + 3;
+      room(h);
+      const cells = [b.sku, name, String(o.q), b.valid ? `${fD(b.L)} x ${fD(b.W)} x ${fD(b.H)}` : "Verify manually", b.valid ? fW(b.wt) : "—"];
+      let x = M; cells.forEach((v, i) => { const c = cols[i]; doc.text(v, c.r ? x+c.w-4 : x, y, c.r ? { align:"right" } : undefined); x += c.w; });
+      y += h; doc.setDrawColor(200); doc.setLineWidth(0.4); doc.line(M, y-8, PW-M, y-8); doc.setDrawColor(0);
+    }
+    room(40); y += 6;
+    if (t.bad){ doc.setFontSize(9); doc.text(`${t.bad} ${t.bad===1?"box":"boxes"} without dimensions on file are not included in totals.`, M, y); y += 13; }
+    doc.setLineWidth(1.2); doc.line(M, y, PW-M, y); y += 14;
+    doc.setFont("helvetica","bold"); doc.setFontSize(10.5); doc.text(tot, M, y);
+    const file = `packing-list-${(state.orderNo || new Date().toISOString().slice(0,10)).replace(/[^\w.-]+/g,"-")}.pdf`;
+    doc.save(file); toast(`Downloaded ${file}`);
+    return doc;
+  } catch(e){ toast(e.message || "Couldn't create the PDF"); }
+  finally { btn.disabled = false; btn.textContent = label; }
 }
 
 /* ---------- paste parser ---------- */
@@ -1255,7 +1571,7 @@ function renderReview(){
 /* ---------- render all ---------- */
 function render(){
   const t = compute(), r = recommend(t);
-  renderCart(); renderTotals(t); renderTruck(t, r); renderRec(t, r); renderPreview(t); buildPrint(t, r);
+  renderCart(); renderTotals(t); renderLoad(t, r); renderRec(t, r); renderPreview(t); buildPrint(t, r);
 }
 function toast(msg){ const el=$("#toast"); el.textContent=msg; el.classList.add("on"); clearTimeout(toast._t); toast._t=setTimeout(()=>el.classList.remove("on"),1800); }
 
@@ -1323,6 +1639,7 @@ $("#copyBtn").addEventListener("click", async ()=>{
   catch { const ta=document.createElement("textarea"); ta.value=txt; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove(); }
   toast("Packing list copied");
 });
+$("#pdfBtn").addEventListener("click", downloadPdf);
 $("#printBtn").addEventListener("click", ()=>{ const t=compute(); buildPrint(t, recommend(t)); window.print(); });
 window.addEventListener("beforeprint", ()=>{ const t=compute(); buildPrint(t, recommend(t)); });
 
@@ -1353,7 +1670,7 @@ TEE-2041-BLK-L
 $("#cart").addEventListener("click", e => { if (e.target.id==="demoOrder"){ SAMPLE_ORDER.forEach(([s,q]) => addLine(s, q)); state.orderNo="SO-DEMO-1001"; $("#orderNo").value=state.orderNo; render(); toast("Sample order loaded"); } });
 $("#sampleSlip").addEventListener("click", () => { $("#paste").value = SAMPLE_SLIP; $("#parseBtn").click(); });
 renderSel(); renderCats(); render(); readPrefillLink();
-window.APP_DEBUG.state = state; window.APP_DEBUG.compute = compute; window.APP_DEBUG.recommend = recommend; window.APP_DEBUG.packText = () => packText(compute()); window.APP_DEBUG.parsePaste = parsePaste; window.APP_DEBUG.importFile = importFile; window.APP_DEBUG.pdfLines = pdfLines; window.APP_DEBUG.parseDocLines = parseDocLines; window.APP_DEBUG.applyPrefill = applyPrefill; window.APP_DEBUG.mergeImports = mergeImports; window.APP_DEBUG.CATEGORIES = CATEGORIES; window.APP_DEBUG.PRODUCTS = PRODUCTS; window.APP_DEBUG.search = search;
+window.APP_DEBUG.state = state; window.APP_DEBUG.compute = compute; window.APP_DEBUG.recommend = recommend; window.APP_DEBUG.packText = () => packText(compute()); window.APP_DEBUG.parsePaste = parsePaste; window.APP_DEBUG.importFile = importFile; window.APP_DEBUG.downloadPdf = downloadPdf; window.APP_DEBUG.V3 = V3;  window.APP_DEBUG.pack3D = pack3D; window.APP_DEBUG.pdfLines = pdfLines; window.APP_DEBUG.parseDocLines = parseDocLines; window.APP_DEBUG.applyPrefill = applyPrefill; window.APP_DEBUG.mergeImports = mergeImports; window.APP_DEBUG.CATEGORIES = CATEGORIES; window.APP_DEBUG.PRODUCTS = PRODUCTS; window.APP_DEBUG.search = search;
 })();
 </script>
 </body>
